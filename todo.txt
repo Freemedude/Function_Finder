@@ -1,0 +1,5 @@
+TODO:
+ * Scanning multiple files/directories
+ * Namespaces
+ * Add tracing info to hint where a function came from (File and line number?)
+ * Add more feedback (Usage etc.)
