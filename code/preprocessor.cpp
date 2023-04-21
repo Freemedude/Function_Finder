@@ -9,8 +9,6 @@
 
 #include "common.hpp"
 
-using Value = std::variant<int, double, bool, std::string>;
-
 struct Argument
 {
     std::string name;
@@ -40,7 +38,6 @@ void skip_whitespace(std::string_view &source)
         advance(source, 1);
     }
 }
-
 
 Supported_Type get_type(std::string_view &source)
 {
@@ -127,6 +124,19 @@ bool get_argument(std::string_view source, Argument &out_arg)
             break;
         }
         case Supported_Type::FLOAT:
+        {
+            double result;
+            bool success = get_double(source.data(), result);
+            if (success)
+            {
+                out_arg.default_value = (float)result;
+            }
+            else
+            {
+                return false;
+            }
+            break;
+        }
         case Supported_Type::DOUBLE:
         {
             double result;
@@ -159,7 +169,7 @@ bool get_argument(std::string_view source, Argument &out_arg)
         case Supported_Type::STRING:
         {
             std::string result;
-            int len = get_string(source.data(), result);
+            int len = get_quoted_string(source.data(), result);
             if (len)
             {
                 out_arg.default_value = result;
@@ -362,7 +372,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     file << std::endl
          << std::endl;
 
-    file << "typedef bool (*Command_Wrapper)(int arg_c, const char **args, Value &out_result);\n";
+    file << "typedef bool (*Command_Wrapper)(std::vector<std::string> &args, Value &out_result);\n";
     file << "typedef std::unordered_map<std::string, Command_Wrapper> Command_Map;\n";
 
     file << std::endl;
@@ -407,14 +417,14 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
         // Confirm number of arguments
         if (cmd.num_required_args)
         {
-            file << "    if(arg_c < " << cmd.num_required_args << ")\n";
+            file << "    if(args.size() < " << cmd.num_required_args << ")\n";
             file << "    {\n";
-            file << "        printf(\"Not enough arguments for '" << cmd.name << "'. Needed " << cmd.num_required_args << ", but got %d\\n\", arg_c);\n";
+            file << "        printf(\"Not enough arguments for '" << cmd.name << "'. Needed " << cmd.num_required_args << ", but got %zu\\n\", args.size());\n";
             file << "        return false;\n";
             file << "    }\n\n";
         }
 
-        // Reused bool flag for value parsing.
+        // Reused success flag for value parsing.
         if (cmd.arguments.size() > 0)
         {
             file << "    int success;\n\n";
@@ -438,40 +448,57 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
                 file << "\n";
             }
 
-            // Get a value for the actual thing!
-            file << "    " << supported_type_to_cpp_type(arg.type) << " arg_" << arg.name << ";\n";
-            // Check if this field has a default value, if so add a check for if an overriding value is given
+            // Create the resulting variable
+            file << "    " << supported_type_to_cpp_type(arg.type) << " arg_" << arg.name;
             if (arg.has_default_value)
             {
-                file << "    if(arg_c > " << i << ")\n";
+                file << " = \"";
+                output_value_to_stream(file, arg.default_value);
+                file << "\"";
+            }
+            file << ";\n";
+
+            // If there's a default value, check if the value has been given. If it is given, parse it.
+            if (arg.has_default_value)
+            {
+                file << "    if(args.size() > " << i << ")\n";
                 file << "    {\n";
-                // We've been given a value to override default with; so parse it!
-                file << "        success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
+
+                // If it's a string, then we don't need parsing.
+                if (arg.type == Supported_Type::STRING)
+                {
+                    file << "        success = true;\n";
+                    file << "        arg_" << arg.name << " = args[" << i << "];\n";
+                }
+                else
+                {
+                    file << "        success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "].c_str(), arg_" << arg.name << ");\n";
+                }
                 file << "        if(!success)\n";
                 file << "        {\n";
-                file << "            printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "]);\n";
+                file << "            printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
                 file << "            return false;\n";
                 file << "        }\n";
-
-                file << "    }\n";
-                file << "    else\n";
-                file << "    {\n";
-                file << "        "
-                     << "arg_" << arg.name << " = ";
-                output_value_to_stream(file, arg.default_value);
-                file << ";\n";
                 file << "    }\n";
             }
             else
             {
-                file << "    success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
+                if (arg.type == Supported_Type::STRING)
+                {
+                    file << "    success = true;\n";
+                    file << "    arg_" << arg.name << " = args[" << i << "];\n";
+                }
+                else
+                {
+                    file << "    success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "].c_str(), arg_" << arg.name << ");\n";
+                }
                 file << "    if(!success)\n";
                 file << "    {\n";
-                file << "        printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "]);\n";
+                file << "        printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
                 file << "        return false;\n";
                 file << "    }\n";
+                file << "\n";
             }
-            file << "\n";
         }
 
         file << "    out_result = " << cmd.name << "(";

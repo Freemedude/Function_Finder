@@ -5,34 +5,24 @@
 #include <vector>
 #include <cstring>
 
-const char *skip_whitespace(const char *str)
-{
-    const char *cur = str;
-    while (*cur == ' ' || *cur == '\t')
-    {
-        cur++;
-    }
-    return cur;
-}
-
 bool string_to_arg_list(const char *args, std::vector<std::string> &out_args)
 {
     const char *cur = args;
-    while(true)
+    while (*cur != 0)
     {
         cur = skip_whitespace(cur);
         std::string word;
-        int count = get_string(args, res);
-        if(!count)
+        int count = get_string(cur, word);
+        if (!count)
         {
             // No moreeeee
             break;
         }
-
-        
+        cur += count;
         out_args.push_back(word);
-         
     }
+
+    return true;
 }
 
 int main(int arg_c, const char **args)
@@ -48,28 +38,42 @@ int main(int arg_c, const char **args)
             break;
         }
 
-        int count;
-        char **args;
-        string_to_arg_list(line.c_str(), count, &args);
+        if (line == "help")
+        {
+            printf("These are the commands:\n");
+            for (const auto &cmd : commands)
+            {
+                printf(" - %s\n", cmd.first.c_str());
+            }
+            printf("\n");
+            printf(">");
+            continue;
+        }
 
-        if (count == 0)
+        std::vector<std::string> args;
+        string_to_arg_list(line.c_str(), args);
+
+        if (args.size() == 0)
         {
             printf("Write something, idiot\n");
             printf(">");
             continue;
         }
 
-        const char *func = args[0];
-        if (commands.contains(func))
+        std::string function_name = args[0];
+
+        args.erase(args.begin(), args.begin() + 1);
+
+        if (commands.contains(function_name))
         {
             Value v;
-            commands[func](count - 1, (const char **)args + 1, v);
+            commands[function_name](args, v);
             output_value_to_stream(std::cout, v);
             printf("\n");
         }
         else
         {
-            printf("Dunno wtf \"\"\"%s\"\"\" is, idiot\n", func);
+            printf("Unknown command \"%s\". Try \"help\" to get a list of commands.\n", function_name.c_str());
         }
         printf(">");
     }
@@ -92,6 +96,7 @@ float add_f(float a, float b)
 CONSOLE_COMMAND
 std::string append(std::string a, float b)
 {
+    printf("%s\n", a.c_str());
     std::string result = a + std::to_string(b);
     return result;
 }

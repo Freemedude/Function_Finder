@@ -6,7 +6,7 @@
 #include <iostream>
 #include <variant>
 
-using Value = std::variant<int, double, bool, std::string>;
+using Value = std::variant<int, float, double, bool, std::string>;
 
 enum class Supported_Type
 {
@@ -18,6 +18,16 @@ enum class Supported_Type
     DOUBLE,
     BOOLEAN
 };
+
+const char *skip_whitespace(const char *str)
+{
+    const char *cur = str;
+    while (*cur == ' ' || *cur == '\t')
+    {
+        cur++;
+    }
+    return cur;
+}
 
 inline int get_int(const char *source, int &out_result)
 {
@@ -53,32 +63,55 @@ inline int get_bool(const char *source, bool &out_result)
     return len;
 }
 
+inline int get_quoted_string(const char *source, std::string &out_result)
+{
+    int len = 0;
+
+    const char *cur = skip_whitespace(source);
+    if (*cur != '\"')
+    {
+        printf("A QUOTED STRING MUST BE QUOTED! Expected '\"', but got %c\n", *cur);
+        return 0;
+    }
+    len++;
+
+    while (source[len] && source[len] != '\"')
+    {
+        len++;
+    }
+
+    if (source[len] != '\"')
+    {
+        // We must terminate on a quote if the string is quoted!
+        return 0;
+    }
+
+    // Add the terminating quote into the length
+    len++;
+
+    out_result = std::string(source + 1, source + len - 1);
+
+    return len;
+}
+
 inline int get_string(const char *source, std::string &out_result)
 {
     int len = 0;
 
     bool is_quoted = source[len] == '\"';
-    len++;
-
-
-    if (is_quoted)
+    if(is_quoted)
     {
-        while (source[len] != '\"')
+        len = get_quoted_string(source, out_result);
+    }
+    else
+    {
+        while (source[len] && !std::isspace(source[len]))
         {
             len++;
         }
         
-        len++;
+        out_result = std::string(source, source + len);
     }
-    else
-    {
-        while (!std::isspace(source[len]))
-        {
-            len++;
-        }
-    }
-
-    out_result = std::string(source, source + len);
 
     return len;
 }
@@ -96,7 +129,6 @@ inline int get_symbol(const char *source, std::string &out_result)
 
     return len;
 }
-
 
 inline int get_double(const char *source, double &out_result)
 {
@@ -225,6 +257,13 @@ inline void output_value_to_stream(std::ostream &stream, const Value &value)
         if (double_value)
         {
             stream << *double_value;
+        }
+    }
+    {
+        const float *float_value = std::get_if<float>(&value);
+        if (float_value)
+        {
+            stream << *float_value << 'f';
         }
     }
     {
