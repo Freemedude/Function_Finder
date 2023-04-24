@@ -208,7 +208,7 @@ std::string just_return(std::string str = "hello")
 
 
 CONSOLE_COMMAND
-int multiply(int a, double b = 2)
+int multiply(int a, double b = 2.1)
 {
     return b * b;
 }

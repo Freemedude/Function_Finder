@@ -581,7 +581,6 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     file << "// Consumer:" << std::endl;
     file << "void init_commands(Command_Map &out_commands)\n";
     file << "{\n";
-
     for (const auto &cmd : commands)
     {
         file << "    out_commands[\"" << cmd.name << "\"] = Function_Decl(";

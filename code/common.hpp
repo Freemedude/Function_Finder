@@ -212,6 +212,16 @@ inline size_t get_quoted_string(std::string_view source, std::string &out_result
 
     return length;
 }
+inline size_t get_word_length(std::string_view source)
+{
+    size_t length = 0;
+    while (length < source.size() && source[length] && !(std::isspace(source[length] || ispunct(source[length]))))
+    {
+        length++;
+    }
+
+    return length;
+}
 
 inline size_t get_string(std::string_view source, std::string &out_result)
 {
@@ -224,10 +234,7 @@ inline size_t get_string(std::string_view source, std::string &out_result)
     }
     else
     {
-        while (source[length] && !std::isspace(source[length]))
-        {
-            length++;
-        }
+        length = get_word_length(source);
 
         out_result = std::string(source.begin(), source.begin() + length);
     }
@@ -250,14 +257,19 @@ inline size_t get_symbol(std::string_view source, std::string &out_result)
 
 inline size_t get_double(std::string_view source, double &out_result)
 {
+    size_t total_length = get_word_length(source);
     size_t length = 0;
+    bool had_digits = false;
+
     if (source[0] == '-' || source[0] == '+')
     {
         length++;
     }
+
     while (std::isdigit(source[length]))
     {
         length++;
+        had_digits = true;
     }
 
     // Handle comma separation
@@ -269,10 +281,19 @@ inline size_t get_double(std::string_view source, double &out_result)
     while (std::isdigit(source[length]))
     {
         length++;
+        had_digits = true;
     }
 
-    if (length == 0)
+    // We must have SOME digits. Either '.1' or '1.' is allowed, but not just '.'
+    if(!had_digits)
     {
+        return false;
+        
+    }
+
+    if (length == 0 || length != total_length)
+    {
+        // We must have used all tokens here!
         return false;
     }
 
@@ -283,14 +304,19 @@ inline size_t get_double(std::string_view source, double &out_result)
 
 inline size_t get_float(std::string_view source, float &out_result)
 {
+    size_t total_length = get_word_length(source);
     size_t length = 0;
+    bool had_digits = false;
+
     if (source[0] == '-' || source[0] == '+')
     {
         length++;
     }
+
     while (std::isdigit(source[length]))
     {
         length++;
+        had_digits = true;
     }
 
     // Handle comma separation
@@ -302,18 +328,27 @@ inline size_t get_float(std::string_view source, float &out_result)
     while (std::isdigit(source[length]))
     {
         length++;
+        had_digits = true;
     }
 
-    if (length == 0)
-    {
-        return false;
-    }
-
-    // Handle trailing f
-    if (source[length] == 'f')
+    if(source[length] == 'f')
     {
         length++;
     }
+
+    // We must have SOME digits. Either '.1' or '1.' is allowed, but not just '.'
+    if(!had_digits)
+    {
+        return false;
+        
+    }
+
+    if (length == 0 || length != total_length)
+    {
+        // We must have used all tokens here!
+        return false;
+    }
+
 
     double res = std::atof(source.data());
     out_result = (float)res;
@@ -381,6 +416,15 @@ inline std::string type_to_string(Value_Type type)
     return "";
 }
 
+inline bool is_valid_float(std::string_view source)
+{
+    bool found_dot = false;
+
+    for (int i = 0; i < source.size(); i++)
+    {
+    }
+}
+
 inline void output_value_to_stream(std::ostream &stream, const Value &value)
 {
     switch (value.type)
@@ -399,7 +443,7 @@ inline void output_value_to_stream(std::ostream &stream, const Value &value)
         break;
     case Value_Type::DOUBLE:
         stream << std::to_string(value.data.double_value);
-    break;
+        break;
     case Value_Type::BOOLEAN:
         stream << value.data.bool_value ? "true" : "false";
         break;
