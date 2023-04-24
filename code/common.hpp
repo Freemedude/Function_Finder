@@ -190,7 +190,6 @@ inline size_t get_bool(std::string_view source, bool &out_result)
 inline size_t get_quoted_string(std::string_view source, std::string &out_result)
 {
     size_t length = 0;
-
     if (source[0] != '\"')
     {
         printf("[ERROR] get_quoted_string() takes a string that start with a quote (after whitespace)\n");
@@ -205,7 +204,7 @@ inline size_t get_quoted_string(std::string_view source, std::string &out_result
 
     if (source[length] != '\"')
     {
-        // We must terminate on a quote if the string is quoted!
+         // We must terminate on a quote if the string is quoted!
         return 0;
     }
 
@@ -289,10 +288,9 @@ inline size_t get_double(std::string_view source, double &out_result)
     }
 
     // We must have SOME digits. Either '.1' or '1.' is allowed, but not just '.'
-    if(!had_digits)
+    if (!had_digits)
     {
         return false;
-        
     }
 
     if (length == 0 || length != total_length)
@@ -335,16 +333,15 @@ inline size_t get_float(std::string_view source, float &out_result)
         had_digits = true;
     }
 
-    if(source[length] == 'f')
+    if (source[length] == 'f')
     {
         length++;
     }
 
     // We must have SOME digits. Either '.1' or '1.' is allowed, but not just '.'
-    if(!had_digits)
+    if (!had_digits)
     {
         return false;
-        
     }
 
     if (length == 0 || length != total_length)
@@ -352,7 +349,6 @@ inline size_t get_float(std::string_view source, float &out_result)
         // We must have used all tokens here!
         return false;
     }
-
 
     double res = std::atof(source.data());
     out_result = (float)res;
@@ -437,7 +433,7 @@ inline void output_value_to_stream(std::ostream &stream, const Value &value)
         stream << "void";
         break;
     case Value_Type::STRING:
-        stream << "\"" <<value.data.string_value << "\"";
+        stream << "\"" << value.data.string_value << "\"";
         break;
     case Value_Type::INTEGER:
         stream << value.data.int_value;

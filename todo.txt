@@ -1,6 +1,4 @@
 TODO:
- * Error feedback
-    * Seems to be a bug when handling unfinished line quotes
  * Scanning multiple files/directories
  * Namespaces
  * Documentation
@@ -11,3 +9,5 @@ TODO:
  * Ask Chat-GPT for feedback
  * Rename to something other than "preprocessor"
  * Seems volatile to the autoformatter result on client.cpp. INVESTIGATE!
+ * Make the search term configurable, so it's usable for other things.
+ * Consider a smarter line-writer solution. Current solution is very ugly.

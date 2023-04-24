@@ -19,7 +19,7 @@ bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_a
         if (!count)
         {
             // The string ended in whitespace.
-            break;
+            return false;
         }
         current = advance(current, count);
         out_args.push_back(word);
@@ -128,7 +128,13 @@ int main(int arg_c, const char **args)
         }
 
         std::vector<std::string> args;
-        string_to_arg_list(line.c_str(), args);
+        bool success = string_to_arg_list(line.c_str(), args);
+        if(!success)
+        {
+            printf("Failed to parse inputs, try again\n");
+            continue;
+        }
+
 
         if (args.size() == 0)
         {
