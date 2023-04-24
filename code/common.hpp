@@ -437,7 +437,7 @@ inline void output_value_to_stream(std::ostream &stream, const Value &value)
         stream << "void";
         break;
     case Value_Type::STRING:
-        stream << value.data.string_value;
+        stream << "\"" <<value.data.string_value << "\"";
         break;
     case Value_Type::INTEGER:
         stream << value.data.int_value;

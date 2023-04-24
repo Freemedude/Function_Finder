@@ -487,16 +487,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
             if (arg.has_default_value)
             {
                 file << " = ";
-                if (arg.type == Value_Type::STRING)
-                {
-                    file << "\"";
-                    output_value_to_stream(file, arg.default_value);
-                    file << "\"";
-                }
-                else
-                {
-                    output_value_to_stream(file, arg.default_value);
-                }
+                output_value_to_stream(file, arg.default_value);
             }
             file << ";\n";
 
@@ -621,17 +612,11 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
             if (arg.has_default_value)
             {
                 file << ", ";
-                if (arg.default_value.type == Value_Type::STRING)
-                {
-                    file << "\"";
-                    output_value_to_stream(file, arg.default_value);
-                    file << "\"";
-                }
-                else
+                if (arg.default_value.type != Value_Type::STRING)
                 {
                     file << "("<< type_to_cpp_type(arg.default_value.type) << ")";
-                    output_value_to_stream(file, arg.default_value);
                 }
+                output_value_to_stream(file, arg.default_value);
             }
 
             file << ")";
