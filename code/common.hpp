@@ -19,17 +19,23 @@ enum class Supported_Type
     BOOLEAN
 };
 
-const char *skip_whitespace(const char *str)
+
+void advance(std::string_view &source, size_t count)
 {
-    const char *cur = str;
-    while (*cur == ' ' || *cur == '\t')
-    {
-        cur++;
-    }
-    return cur;
+    source = source.substr(count);
 }
 
-inline int get_int(const char *source, int &out_result)
+void skip_whitespace(std::string_view &source)
+{
+    size_t count = 0;
+    while (std::isspace(source[(int)count]))
+    {
+        count++;
+    }
+    advance(source, count);
+}
+
+inline int get_int(std::string_view &source, int &out_result)
 {
     int len = 0;
     if (source[0] == '-' || source[0] == '+')
@@ -41,165 +47,165 @@ inline int get_int(const char *source, int &out_result)
         len++;
     }
 
-    out_result = std::atoi(source);
+    out_result = std::atoi(source.data());
 
     return len;
 }
 
-inline int get_bool(const char *source, bool &out_result)
+inline size_t get_bool(std::string_view &source, bool &out_result)
 {
-    int len = 0;
-    if (strstr(source, "true") == source)
+    size_t length = 0;
+    if (strstr(source.data(), "true") == source)
     {
-        len = 4;
+        length = 4;
         out_result = true;
     }
-    else if (strstr(source, "false") == source)
+    else if (strstr(source.data(), "false") == source)
     {
-        len = 5;
+        length = 5;
         out_result = false;
     }
 
-    return len;
+    return length;
 }
 
-inline int get_quoted_string(const char *source, std::string &out_result)
+inline size_t get_quoted_string(std::string_view &source, std::string &out_result)
 {
-    int len = 0;
+    size_t length = 0;
 
-    const char *cur = skip_whitespace(source);
-    if (*cur != '\"')
+    skip_whitespace(source);
+    if (source[0] != '\"')
     {
-        printf("A QUOTED STRING MUST BE QUOTED! Expected '\"', but got %c\n", *cur);
+        printf("[ERROR] get_quoted_string() takes a string that  start with a quote (after whitespace)\n");
         return 0;
     }
-    len++;
+    length++;
 
-    while (source[len] && source[len] != '\"')
+    while (source[length] && source[length] != '\"')
     {
-        len++;
+        length++;
     }
 
-    if (source[len] != '\"')
+    if (source[length] != '\"')
     {
         // We must terminate on a quote if the string is quoted!
         return 0;
     }
 
     // Add the terminating quote into the length
-    len++;
+    length++;
 
-    out_result = std::string(source + 1, source + len - 1);
+    out_result = std::string(source.begin() + 1, source.begin() + length - 1);
 
-    return len;
+    return length;
 }
 
-inline int get_string(const char *source, std::string &out_result)
+inline size_t get_string(std::string_view &source, std::string &out_result)
 {
-    int len = 0;
+    size_t length = 0;
 
-    bool is_quoted = source[len] == '\"';
+    bool is_quoted = source[length] == '\"';
     if(is_quoted)
     {
-        len = get_quoted_string(source, out_result);
+        length = get_quoted_string(source, out_result);
     }
     else
     {
-        while (source[len] && !std::isspace(source[len]))
+        while (source[length] && !std::isspace(source[length]))
         {
-            len++;
+            length++;
         }
         
-        out_result = std::string(source, source + len);
+    out_result = std::string(source.begin(), source.begin() + length );
     }
 
-    return len;
+    return length;
 }
 
 
-inline int get_symbol(const char *source, std::string &out_result)
+inline size_t get_symbol(std::string_view &source, std::string &out_result)
 {
-    int len = 0;
-    while (std::isalnum(source[len]) || source[len] == '_' || source[len] == ':')
+    size_t length = 0;
+    while (std::isalnum(source[length]) || source[length] == '_' || source[length] == ':')
     {
-        len++;
+        length++;
     }
 
-    out_result = std::string(source, source + len);
+    out_result = std::string(source.begin(), source.begin() + length);
 
-    return len;
+    return length;
 }
 
-inline int get_double(const char *source, double &out_result)
+inline size_t get_double(std::string_view &source, double &out_result)
 {
-    int len = 0;
+    size_t length = 0;
     if (source[0] == '-' || source[0] == '+')
     {
-        len++;
+        length++;
     }
-    while (std::isdigit(source[len]))
+    while (std::isdigit(source[length]))
     {
-        len++;
+        length++;
     }
 
     // Handle comma separation
-    if (source[len] == '.')
+    if (source[length] == '.')
     {
-        len++;
+        length++;
     }
 
-    while (std::isdigit(source[len]))
+    while (std::isdigit(source[length]))
     {
-        len++;
+        length++;
     }
 
-    if (len == 0)
+    if (length == 0)
     {
         return false;
     }
 
-    out_result = std::atof(source);
+    out_result = std::atof(source.data());
 
-    return len;
+    return length;
 }
-inline int get_float(const char *source, float &out_result)
+inline size_t get_float(std::string_view &source, float &out_result)
 {
-    int len = 0;
+    size_t length = 0;
     if (source[0] == '-' || source[0] == '+')
     {
-        len++;
+        length++;
     }
-    while (std::isdigit(source[len]))
+    while (std::isdigit(source[length]))
     {
-        len++;
+        length++;
     }
 
     // Handle comma separation
-    if (source[len] == '.')
+    if (source[length] == '.')
     {
-        len++;
+        length++;
     }
 
-    while (std::isdigit(source[len]))
+    while (std::isdigit(source[length]))
     {
-        len++;
+        length++;
     }
 
-    if (len == 0)
+    if (length == 0)
     {
         return false;
     }
 
     // Handle trailing f
-    if (source[len] == 'f')
+    if (source[length] == 'f')
     {
-        len++;
+        length++;
     }
 
-    double res = std::atof(source);
+    double res = std::atof(source.data());
     out_result = (float)res;
 
-    return len;
+    return length;
 }
 
 inline std::string supported_type_to_cpp_type(Supported_Type type)

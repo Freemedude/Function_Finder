@@ -26,29 +26,17 @@ struct Function_Decl
     int num_optional_args;
 };
 
-void advance(std::string_view &source, int count)
-{
-    source = source.substr(count);
-}
-
-void skip_whitespace(std::string_view &source)
-{
-    while (std::isspace(source[0]))
-    {
-        advance(source, 1);
-    }
-}
-
 Supported_Type get_type(std::string_view &source)
 {
     skip_whitespace(source);
     std::string str;
-    int len = get_symbol(source.data(), str);
-    if (!len)
+    size_t length = get_symbol(source, str);
+    if (!length)
     {
         printf("Failed to get type string from '%s'", source.data());
+        return Supported_Type::UNKNOWN;
     }
-    advance(source, len);
+    advance(source, length);
 
     Supported_Type result = Supported_Type::UNKNOWN;
     if (str == "double")
@@ -86,13 +74,13 @@ bool get_argument(std::string_view source, Argument &out_arg)
     Supported_Type type = get_type(source);
     skip_whitespace(source);
     std::string name;
-    int len = get_symbol(source.data(), name);
-    if (!len)
+    size_t length = get_symbol(source, name);
+    if (!length)
     {
         printf("Failed to get argument name at position '%s'\n", source.data());
     }
 
-    advance(source, len);
+    advance(source, length);
 
     skip_whitespace(source);
 
@@ -103,7 +91,7 @@ bool get_argument(std::string_view source, Argument &out_arg)
     if (source[0] == '=')
     {
         out_arg.has_default_value = true;
-        advance(source, 1);
+        advance(source, (size_t)1);
         skip_whitespace(source);
         switch (type)
         {
@@ -111,11 +99,11 @@ bool get_argument(std::string_view source, Argument &out_arg)
         {
 
             bool result;
-            int len = get_bool(source.data(), result);
-            if (len)
+            size_t length = get_bool(source, result);
+            if (length)
             {
                 out_arg.default_value = result;
-                advance(source, len);
+                advance(source, length);
             }
             else
             {
@@ -125,11 +113,12 @@ bool get_argument(std::string_view source, Argument &out_arg)
         }
         case Supported_Type::FLOAT:
         {
-            double result;
-            bool success = get_double(source.data(), result);
-            if (success)
+            float result;
+            size_t length = get_float(source, result);
+            if (length)
             {
-                out_arg.default_value = (float)result;
+                out_arg.default_value = result;
+                advance(source, length);
             }
             else
             {
@@ -140,10 +129,11 @@ bool get_argument(std::string_view source, Argument &out_arg)
         case Supported_Type::DOUBLE:
         {
             double result;
-            bool success = get_double(source.data(), result);
-            if (success)
+            size_t length = get_double(source, result);
+            if (length)
             {
                 out_arg.default_value = result;
+                advance(source, length);
             }
             else
             {
@@ -155,10 +145,11 @@ bool get_argument(std::string_view source, Argument &out_arg)
         {
 
             int result;
-            int len = get_int(source.data(), result);
-            if (len)
+            size_t length = get_int(source, result);
+            if (length)
             {
                 out_arg.default_value = result;
+                advance(source, length);
             }
             else
             {
@@ -169,16 +160,16 @@ bool get_argument(std::string_view source, Argument &out_arg)
         case Supported_Type::STRING:
         {
             std::string result;
-            int len = get_quoted_string(source.data(), result);
-            if (len)
+            size_t length = get_quoted_string(source, result);
+            if (length)
             {
                 out_arg.default_value = result;
+                advance(source, length);
             }
             else
             {
                 printf("Failed to get string default value %s\n", source.data());
             }
-            advance(source, len);
             break;
         }
         }
@@ -195,7 +186,7 @@ bool get_arguments(std::string_view &source, std::vector<Argument> &out_args)
     {
         return false;
     }
-    advance(source, 1);
+    advance(source, (size_t)1);
 
     // We should now be within the parenthesis
     skip_whitespace(source);
@@ -204,30 +195,30 @@ bool get_arguments(std::string_view &source, std::vector<Argument> &out_args)
     while (true)
     {
         bool found_end_parenthesis = false;
-        int len = 0;
+        size_t length = 0;
 
         // Delimit each argument
         while (true)
         {
-            if (source[len] == ',')
+            if (source[length] == ',')
             {
-                len++;
+                length++;
                 break;
             }
 
-            if (source[len] == ')')
+            if (source[length] == ')')
             {
                 found_end_parenthesis = true;
                 break;
             }
 
-            len += 1;
+            length += 1;
         }
 
-        if (len > 0)
+        if (length > 0)
         {
             Argument arg{};
-            bool success = get_argument(source.substr(0, len), arg);
+            bool success = get_argument(source.substr(0, length), arg);
 
             if (!success)
             {
@@ -241,7 +232,7 @@ bool get_arguments(std::string_view &source, std::vector<Argument> &out_args)
         {
             break;
         }
-        advance(source, len);
+        advance(source, length);
     }
 
     return true;
@@ -251,17 +242,17 @@ bool try_parse_function(std::string_view &source, Function_Decl *out_function)
 {
     // Skip the "CONSOLE_COMMAND" bit
     skip_whitespace(source);
-    advance(source, (int)sizeof("CONSOLE_COMMAND"));
+    advance(source, sizeof("CONSOLE_COMMAND"));
     out_function->return_type = get_type(source);
     skip_whitespace(source);
 
-    int len = get_symbol(source.data(), out_function->name);
-    if (!len)
+    size_t length = get_symbol(source, out_function->name);
+    if (!length)
     {
         printf("Failed to get function name '%s'\n", source.data());
         return false;
     }
-    advance(source, len);
+    advance(source, length);
 
     bool success = get_arguments(source, out_function->arguments);
     if (!success)

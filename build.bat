@@ -7,7 +7,7 @@ pushd out
 if not exist include mkdir include
 
 echo Building Preprocessor
-cl /nologo ..\code\preprocessor.cpp /EHsc /std:c++20
+cl /nologo /Zi ..\code\preprocessor.cpp /EHsc /std:c++20 /link /DEBUG:FULL
 if %ERRORLEVEL% neq 0 goto :error
 echo:
 
