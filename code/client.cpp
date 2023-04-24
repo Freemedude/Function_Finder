@@ -27,8 +27,25 @@ bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_a
 
 int main(int arg_c, const char **args)
 {
-    Command_Map commands = init_commands();
 
+    Function_Decl a(
+        "../code/client.cpp", (size_t)122, &command_add, "add", (Value_Type)3,
+        // Arguments
+        {
+            // Argument a
+            Argument(
+                "a",
+                (Value_Type)3,
+                "Hello"),
+            // Argument b
+            {
+                "b",
+                (Value_Type)3}},
+        2,
+        0);
+
+    Command_Map commands;
+    init_commands(commands);
     std::string line;
     printf(">");
     while (std::getline(std::cin, line))
@@ -49,6 +66,21 @@ int main(int arg_c, const char **args)
             printf(">");
             continue;
         }
+        if (line.starts_with("where"))
+        {
+            std::string view(line.begin() + sizeof("where"), line.end());
+
+            if (commands.contains(view))
+            {
+                auto cmd = commands[view];
+                printf("You can find command \"%s\" at %s:L%zu\n", view.data(), cmd.file.c_str(), cmd.line);
+            }
+            else
+            {
+                printf("Unknown command \"%s\". Try \"help\" to get a list of commands.\n", view.data());
+            }
+            continue;
+        }
 
         std::vector<std::string> args;
         string_to_arg_list(line.c_str(), args);
@@ -67,7 +99,7 @@ int main(int arg_c, const char **args)
         if (commands.contains(function_name))
         {
             Value v;
-            commands[function_name](args, v);
+            commands[function_name].function(args, v);
             output_value_to_stream(std::cout, v);
             printf("\n");
         }

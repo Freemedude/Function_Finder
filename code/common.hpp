@@ -3,12 +3,11 @@
 #define CONSOLE_COMMAND
 
 #include <cstring>
+#include <string>
 #include <iostream>
-#include <variant>
+#include <unordered_map>
 
-using Value = std::variant<int, float, double, bool, std::string>;
-
-enum class Supported_Type
+enum class Value_Type
 {
     UNKNOWN,
     VOID,
@@ -18,6 +17,112 @@ enum class Supported_Type
     DOUBLE,
     BOOLEAN
 };
+
+union Value_Data
+{
+    int int_value;
+    float float_value;
+    double double_value;
+    bool bool_value;
+    char string_value[128];
+};
+
+struct Value
+{
+    Value_Type type;
+    Value_Data data;
+};
+
+struct Argument
+{
+    std::string name;
+    Value_Type type = Value_Type::UNKNOWN;
+    bool has_default_value = false;
+    Value default_value;
+
+    Argument() = default;
+    Argument(const std::string &name, Value_Type type)
+    {
+        this->name = name;
+        this->type = type;
+    }
+
+    Argument(const std::string &name, Value_Type type, std::string default_value)
+        : Argument(name, type)
+    {
+        this->has_default_value = true;
+        this->default_value.type = Value_Type::STRING;
+        strncpy(this->default_value.data.string_value, default_value.data(), sizeof(this->default_value));
+    }
+
+    Argument(const std::string &name, Value_Type type, int default_value)
+        : Argument(name, type)
+    {
+        this->has_default_value = true;
+        this->default_value.type = Value_Type::INTEGER;
+        this->default_value.data.int_value = default_value;
+    }
+
+    Argument(const std::string &name, Value_Type type, float default_value)
+        : Argument(name, type)
+    {
+        this->has_default_value = true;
+        this->default_value.type = Value_Type::FLOAT;
+        this->default_value.data.float_value = default_value;
+    }
+
+    Argument(const std::string &name, Value_Type type, double default_value)
+        : Argument(name, type)
+    {
+        this->has_default_value = true;
+        this->default_value.type = Value_Type::DOUBLE;
+        this->default_value.data.double_value = default_value;
+    }
+
+    Argument(const std::string &name, Value_Type type, bool default_value)
+        : Argument(name, type)
+    {
+        this->has_default_value = true;
+        this->default_value.type = Value_Type::BOOLEAN;
+        this->default_value.data.bool_value = default_value;
+    }
+};
+
+typedef bool (*Command_Wrapper)(std::vector<std::string> &args, Value &out_result);
+
+struct Function_Decl
+{
+    std::string file = "UNSET";
+    size_t line = 0;
+    Command_Wrapper function;
+    std::string name;
+    Value_Type return_type;
+    std::vector<Argument> arguments;
+    int num_required_args;
+    int num_optional_args;
+
+    Function_Decl() = default;
+    Function_Decl(const std::string &file,
+                  size_t line,
+                  Command_Wrapper function,
+                  std::string name,
+                  Value_Type return_type,
+                  std::vector<Argument> arguments,
+                  int num_required_args,
+                  int num_optional_args)
+    {
+        this->file = file;
+        this->line = line;
+        this->function = function;
+        this->name = name;
+        this->return_type = return_type;
+        this->arguments = arguments;
+        this->num_required_args = num_required_args;
+        this->num_optional_args = num_optional_args;
+    }
+};
+
+typedef std::unordered_map<std::string, Function_Decl> Command_Map;
 
 std::string_view advance(std::string_view source, size_t count)
 {
@@ -206,84 +311,91 @@ inline size_t get_float(std::string_view source, float &out_result)
     return length;
 }
 
-inline std::string supported_type_to_cpp_type(Supported_Type type)
+inline std::string type_to_cpp_type(Value_Type type)
 {
     switch (type)
     {
-    case Supported_Type::VOID:
+    case Value_Type::VOID:
         return "void";
-    case Supported_Type::STRING:
+    case Value_Type::STRING:
         return "std::string";
-    case Supported_Type::INTEGER:
+    case Value_Type::INTEGER:
         return "int";
-    case Supported_Type::FLOAT:
+    case Value_Type::FLOAT:
         return "float";
-    case Supported_Type::DOUBLE:
+    case Value_Type::DOUBLE:
         return "double";
-    case Supported_Type::BOOLEAN:
+    case Value_Type::BOOLEAN:
         return "bool";
     }
     return "";
 }
 
-inline std::string supported_type_to_readable_string(Supported_Type type)
+inline std::string type_to_readable_string(Value_Type type)
 {
     switch (type)
     {
-    case Supported_Type::VOID:
+    case Value_Type::VOID:
         return "void";
-    case Supported_Type::STRING:
+    case Value_Type::STRING:
         return "string";
-    case Supported_Type::INTEGER:
+    case Value_Type::INTEGER:
         return "int";
-    case Supported_Type::FLOAT:
+    case Value_Type::FLOAT:
         return "float";
-    case Supported_Type::DOUBLE:
+    case Value_Type::DOUBLE:
         return "double";
-    case Supported_Type::BOOLEAN:
+    case Value_Type::BOOLEAN:
         return "bool";
+    }
+    return "";
+}
+
+
+inline std::string type_to_string(Value_Type type)
+{
+    switch (type)
+    {
+    case Value_Type::VOID:
+        return "Value_Type::VOID";
+    case Value_Type::STRING:
+        return "Value_Type::STRING";
+    case Value_Type::INTEGER:
+        return "Value_Type::INTEGER";
+    case Value_Type::FLOAT:
+        return "Value_Type::FLOAT";
+    case Value_Type::DOUBLE:
+        return "Value_Type::DOUBLE";
+    case Value_Type::BOOLEAN:
+        return "Value_Type::BOOLEAN";
     }
     return "";
 }
 
 inline void output_value_to_stream(std::ostream &stream, const Value &value)
 {
+    printf("TYPE: %d\n", value.type);
+    switch (value.type)
     {
-
-        const int *int_value = std::get_if<int>(&value);
-        if (int_value)
-        {
-            stream << *int_value;
-        }
-    }
-    {
-        const double *double_value = std::get_if<double>(&value);
-        if (double_value)
-        {
-            stream << *double_value;
-        }
-    }
-    {
-        const float *float_value = std::get_if<float>(&value);
-        if (float_value)
-        {
-            stream << *float_value << 'f';
-        }
-    }
-    {
-
-        const bool *bool_value = std::get_if<bool>(&value);
-        if (bool_value)
-        {
-            stream << *bool_value;
-        }
-    }
-    {
-
-        const std::string *string_value = std::get_if<std::string>(&value);
-        if (string_value)
-        {
-            stream << *string_value;
-        }
+    case Value_Type::VOID:
+        stream << "void";
+        break;
+    case Value_Type::STRING:
+        stream << value.data.string_value;
+        break;
+    case Value_Type::INTEGER:
+        stream << value.data.int_value;
+        break;
+    case Value_Type::FLOAT:
+        stream << value.data.float_value << "f";
+        break;
+    case Value_Type::DOUBLE:
+        stream << value.data.double_value;
+        break;
+    case Value_Type::BOOLEAN:
+        stream << value.data.bool_value;
+        break;
+    default:
+        break;
     }
 }

@@ -5,28 +5,11 @@
 #include <regex>
 #include <sstream>
 #include <cctype>
-#include <variant>
+#include <format>
 
 #include "common.hpp"
 
-struct Argument
-{
-    std::string name;
-    Supported_Type type = Supported_Type::UNKNOWN;
-    Value default_value;
-    bool has_default_value = false;
-};
-
-struct Function_Decl
-{
-    std::string name;
-    Supported_Type return_type;
-    std::vector<Argument> arguments;
-    int num_required_args;
-    int num_optional_args;
-};
-
-size_t get_type(std::string_view source, Supported_Type &out_type)
+size_t get_type(std::string_view source, Value_Type &out_type)
 {
     size_t result = 0;
     source = skip_whitespace(source);
@@ -35,37 +18,37 @@ size_t get_type(std::string_view source, Supported_Type &out_type)
     if (!length)
     {
         printf("Failed to get type string from '%s'", source.data());
-        out_type = Supported_Type::UNKNOWN;
+        out_type = Value_Type::UNKNOWN;
         return 0;
     }
 
     result += length;
     source = advance(source, length);
 
-    Supported_Type type = Supported_Type::UNKNOWN;
+    Value_Type type = Value_Type::UNKNOWN;
     if (str == "double")
     {
-        type = Supported_Type::DOUBLE;
+        type = Value_Type::DOUBLE;
     }
     if (str == "float")
     {
-        type = Supported_Type::FLOAT;
+        type = Value_Type::FLOAT;
     }
     if (str == "int")
     {
-        type = Supported_Type::INTEGER;
+        type = Value_Type::INTEGER;
     }
     else if (str == "std::string")
     {
-        type = Supported_Type::STRING;
+        type = Value_Type::STRING;
     }
     else if (str == "bool")
     {
-        type = Supported_Type::BOOLEAN;
+        type = Value_Type::BOOLEAN;
     }
     else if (str == "void")
     {
-        type = Supported_Type::VOID;
+        type = Value_Type::VOID;
     }
 
     out_type = type;
@@ -76,7 +59,7 @@ size_t get_type(std::string_view source, Supported_Type &out_type)
 size_t get_argument(std::string_view source, Argument &out_arg)
 {
     source = skip_whitespace(source);
-    Supported_Type type;
+    Value_Type type;
     size_t final_length = get_type(source, type);
     source = advance(source, final_length);
     source = skip_whitespace(source);
@@ -99,18 +82,20 @@ size_t get_argument(std::string_view source, Argument &out_arg)
     if (source[0] == '=')
     {
         out_arg.has_default_value = true;
+        out_arg.default_value.type = type;
+        printf("Default value %s has type %d\n", name.c_str(), (int)type);
         source = advance(source, (size_t)1);
         source = skip_whitespace(source);
         switch (type)
         {
-        case Supported_Type::BOOLEAN:
+        case Value_Type::BOOLEAN:
         {
 
             bool result;
             size_t length = get_bool(source, result);
             if (length)
             {
-                out_arg.default_value = result;
+                out_arg.default_value.data.bool_value = result;
                 source = advance(source, length);
                 final_length += length;
             }
@@ -120,16 +105,15 @@ size_t get_argument(std::string_view source, Argument &out_arg)
             }
             break;
         }
-        case Supported_Type::FLOAT:
+        case Value_Type::FLOAT:
         {
             float result;
             size_t length = get_float(source, result);
             if (length)
             {
-                out_arg.default_value = result;
+                out_arg.default_value.data.float_value = result;
                 source = advance(source, length);
                 final_length += length;
-                
             }
             else
             {
@@ -137,13 +121,13 @@ size_t get_argument(std::string_view source, Argument &out_arg)
             }
             break;
         }
-        case Supported_Type::DOUBLE:
+        case Value_Type::DOUBLE:
         {
             double result;
             size_t length = get_double(source, result);
             if (length)
             {
-                out_arg.default_value = result;
+                out_arg.default_value.data.double_value = result;
                 source = advance(source, length);
                 final_length += length;
             }
@@ -153,14 +137,14 @@ size_t get_argument(std::string_view source, Argument &out_arg)
             }
             break;
         }
-        case Supported_Type::INTEGER:
+        case Value_Type::INTEGER:
         {
 
             int result;
             size_t length = get_int(source, result);
             if (length)
             {
-                out_arg.default_value = result;
+                out_arg.default_value.data.int_value = result;
                 source = advance(source, length);
                 final_length += length;
             }
@@ -170,13 +154,13 @@ size_t get_argument(std::string_view source, Argument &out_arg)
             }
             break;
         }
-        case Supported_Type::STRING:
+        case Value_Type::STRING:
         {
             std::string result;
             size_t length = get_quoted_string(source, result);
             if (length)
             {
-                out_arg.default_value = result;
+                strncpy(out_arg.default_value.data.string_value, result.c_str(), result.length());
                 source = advance(source, length);
                 final_length += length;
             }
@@ -327,7 +311,6 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
 {
     // Gather declarations
-    std::string line;
     std::ifstream file(path);
     if (!file.is_open())
     {
@@ -340,9 +323,33 @@ bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
     auto content = ss.str();
     file.close();
 
-    size_t pos = 0;
+    std::string_view file_view(content.begin(), content.end());
+    size_t line = 1;
     int count = 0;
+#if 1
+    while (true)
+    {
+        auto next_line_end = file_view.find('\n');
+        if (next_line_end == std::string_view::npos)
+        {
+            break;
+        }
 
+        file_view = file_view.substr(next_line_end + 1);
+        line++;
+
+        if (file_view.starts_with("CONSOLE_COMMAND"))
+        {
+            Function_Decl func;
+            try_parse_function(file_view, &func);
+            func.line = line + 1;
+            func.file = std::string(path);
+            inout_commands.push_back(func);
+        }
+    }
+
+#else
+    size_t pos = 0;
     while ((pos = content.find("\nCONSOLE_COMMAND", pos)) != std::string_view::npos)
     {
         std::string_view view(content.begin() + pos, content.end());
@@ -352,7 +359,7 @@ bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
         inout_commands.push_back(func);
         pos += 1;
     }
-
+#endif
     return true;
 }
 
@@ -361,7 +368,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     std::ofstream file(path);
     if (!file.is_open())
     {
-        printf("Couldn't create destination file file '%s'!\n", path);
+        printf("Couldn't create destination file '%s'!\n", path);
         return false;
     }
 
@@ -381,9 +388,6 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     file << std::endl
          << std::endl;
 
-    file << "typedef bool (*Command_Wrapper)(std::vector<std::string> &args, Value &out_result);\n";
-    file << "typedef std::unordered_map<std::string, Command_Wrapper> Command_Map;\n";
-
     file << std::endl;
 #pragma endregion
 
@@ -393,17 +397,16 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     file << "// Pre-definitions:\n";
     for (const auto &cmd : commands)
     {
-        file << supported_type_to_cpp_type(cmd.return_type) << " " << cmd.name << "(";
+        file << type_to_cpp_type(cmd.return_type) << " " << cmd.name << "(";
         for (int i = 0; i < cmd.arguments.size(); i++)
         {
             const Argument &arg = cmd.arguments[i];
-            file << supported_type_to_cpp_type(arg.type) << " " << arg.name;
+            file << type_to_cpp_type(arg.type) << " " << arg.name;
 
             // NOTE:
             //   We intentionally leave out the default value here. Since the compiler will complain
             //   if we define it twice. Default arguments are handled in the generated
             //   command_* functions placed below.                              @Daniel 10/04/2023
-
             if (i != cmd.arguments.size() - 1)
             {
                 file << ", ";
@@ -420,6 +423,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
     for (const auto &cmd : commands)
     {
         // Function definition
+        file << "// Generated based on function \"" << cmd.name << "\" from file \"" << cmd.file << "\" line " << cmd.line << "\n";
         file << "bool command_" << cmd.name << "(std::vector<std::string> &args, Value &out_result)\n";
         file << "{\n";
 
@@ -458,7 +462,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
             }
 
             // Create the resulting variable
-            file << "    " << supported_type_to_cpp_type(arg.type) << " arg_" << arg.name;
+            file << "    " << type_to_cpp_type(arg.type) << " arg_" << arg.name;
             if (arg.has_default_value)
             {
                 file << " = \"";
@@ -474,55 +478,76 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
                 file << "    {\n";
 
                 // If it's a string, then we don't need parsing.
-                if (arg.type == Supported_Type::STRING)
+                if (arg.type == Value_Type::STRING)
                 {
                     file << "        success = true;\n";
                     file << "        arg_" << arg.name << " = args[" << i << "];\n";
                 }
                 else
                 {
-                    file << "        success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
+                    file << "        success = get_" << type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
                 }
                 file << "        if(!success)\n";
                 file << "        {\n";
-                file << "            printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
+                file << "            printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
                 file << "            return false;\n";
                 file << "        }\n";
                 file << "    }\n";
             }
             else
             {
-                if (arg.type == Supported_Type::STRING)
+                if (arg.type == Value_Type::STRING)
                 {
                     file << "    success = true;\n";
                     file << "    arg_" << arg.name << " = args[" << i << "];\n";
                 }
                 else
                 {
-                    file << "    success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
+                    file << "    success = get_" << type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
                 }
                 file << "    if(!success)\n";
                 file << "    {\n";
-                file << "        printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << supported_type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
+                file << "        printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
                 file << "        return false;\n";
                 file << "    }\n";
                 file << "\n";
             }
         }
+        file << "    out_result.type = " << type_to_string(cmd.return_type) << ";\n";
 
-        file << "    out_result = " << cmd.name << "(";
-
-        for (int i = 0; i < cmd.arguments.size(); i++)
+        if (cmd.return_type == Value_Type::STRING)
         {
-            const Argument &arg = cmd.arguments[i];
-            file << "arg_" << arg.name;
 
-            if (i < cmd.arguments.size() - 1)
+            file << "    std::string result = " << cmd.name << "(";
+            for (int i = 0; i < cmd.arguments.size(); i++)
             {
-                file << ", ";
+                const Argument &arg = cmd.arguments[i];
+                file << "arg_" << arg.name;
+
+                if (i < cmd.arguments.size() - 1)
+                {
+                    file << ", ";
+                }
             }
+            file << ");\n";
+            file << "    strncpy(out_result.data.string_value, result.data(), sizeof(out_result.data.string_value));\n\n";
         }
-        file << ");\n\n";
+        else
+        {
+            file << "    out_result.data." << type_to_readable_string(cmd.return_type) << "_value = " << cmd.name << "(";
+            for (int i = 0; i < cmd.arguments.size(); i++)
+            {
+                const Argument &arg = cmd.arguments[i];
+                file << "arg_" << arg.name;
+
+                if (i < cmd.arguments.size() - 1)
+                {
+                    file << ", ";
+                }
+            }
+            file << ");\n\n";
+        }
+
         file << "    return true;\n";
         file << "}\n\n";
     }
@@ -531,17 +556,46 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
 
     // Write the 'init_commands' function
     file << "// Consumer:" << std::endl;
-    file << "Command_Map init_commands()\n";
+    file << "void init_commands(Command_Map &out_commands)\n";
     file << "{\n";
-    file << "    Command_Map results{};\n";
-    file << "\n";
 
     for (const auto &cmd : commands)
     {
-        file << "    results[\"" << cmd.name << "\"] = &command_" << cmd.name << ";\n";
+        file << "    out_commands[\"" << cmd.name << "\"] = Function_Decl(";
+        file << "\"" << cmd.file << "\", (size_t)" << cmd.line << ", "
+             << "&command_" << cmd.name << ", "
+             << "\"" << cmd.name << "\", (Value_Type)" << (int)cmd.return_type << ",\n";
+        file << "        // Arguments\n";
+        file << "        {\n";
+        for (size_t i = 0; i < cmd.arguments.size(); i++)
+        {
+            const auto &arg = cmd.arguments[i];
+            file << "            // Argument " << arg.name << std::endl;
+            file << "            Argument(";
+
+            file << "\"" << arg.name << "\", ";
+            file << "(Value_Type)" << (int)arg.type;
+            if (arg.has_default_value)
+            {
+                file << ", ";
+                file << "\"";
+                output_value_to_stream(file, arg.default_value);
+                file << "\"";
+            }
+
+            file << ")";
+            if (i != cmd.arguments.size() - 1)
+            {
+                file << ",";
+            }
+            file << "\n";
+        }
+        file << "        },\n";
+        file << "        " << (int)cmd.num_required_args << ",\n";
+        file << "        " << (int)cmd.num_optional_args << "\n";
+        file << "    );\n";
     }
     file << "\n";
-    file << "    return results;\n";
     file << "}" << std::endl;
 
     file.close();

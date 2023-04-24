@@ -12,7 +12,7 @@ if %ERRORLEVEL% neq 0 goto :error
 echo:
 
 echo Running preprocessor
-preprocessor.exe ..\code\client.cpp include\output.hpp
+preprocessor.exe ../code/client.cpp include/output.hpp
 if %ERRORLEVEL% neq 0 goto :error
 
 echo Building client
