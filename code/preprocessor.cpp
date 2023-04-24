@@ -241,6 +241,28 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
     // Skip the "CONSOLE_COMMAND" bit
     source = skip_whitespace(source);
     source = advance(source, sizeof("CONSOLE_COMMAND"));
+
+    // Get the comment
+    source = skip_whitespace(source);
+    // We got a comment!
+    if(source[0] == '/') 
+    {   
+        if(source[1] == '/') // Line comment. Nice and easy.
+        {
+
+            std::string_view comment_view = advance(source, (size_t)2);
+            comment_view = skip_whitespace(comment_view);
+            auto line_end = comment_view.find('\n');
+            out_function->comment = std::string(comment_view.begin(), comment_view.begin() + line_end);;
+            source = advance(source, (size_t)source.find('\n') + 1);
+        }
+        else if('*') // Block comment.
+        {
+
+        }
+    }
+
+
     size_t final_length = get_type(source, out_function->return_type);
     source = advance(source, final_length);
     source = skip_whitespace(source);
@@ -621,7 +643,8 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
         }
         file << "        },\n";
         file << "        " << (int)cmd.num_required_args << ",\n";
-        file << "        " << (int)cmd.num_optional_args << "\n";
+        file << "        " << (int)cmd.num_optional_args << ",\n";
+        file << "        \"" << cmd.comment << "\"\n";
         file << "    );\n";
     }
     file << "\n";

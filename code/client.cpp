@@ -82,7 +82,7 @@ int main(int arg_c, const char **args)
             if (commands.contains(view))
             {
                 auto cmd = commands[view];
-                printf("Command \"%s\" usage: '%s ", cmd.name.c_str(), cmd.name.c_str());
+                printf("Command \"%s\" \n\tNote: %s\n\tusage: '%s ", cmd.name.c_str(), cmd.comment.c_str(), cmd.name.c_str());
                 for (int i = 0; i < cmd.num_required_args; i++)
                 {
                     printf("<%s : %s>", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
@@ -207,7 +207,7 @@ std::string just_return(std::string str = "hello")
 }
 
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND //Squares the second parameter. Ignores the first
 int multiply(int a, double b = 2.1)
 {
     return b * b;

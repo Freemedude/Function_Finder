@@ -5,6 +5,7 @@
 #include <cstring>
 #include <string>
 #include <iostream>
+#include <string_view>
 #include <unordered_map>
 
 enum class Value_Type
@@ -100,6 +101,7 @@ struct Function_Decl
     std::vector<Argument> arguments;
     int num_required_args;
     int num_optional_args;
+    std::string comment;
 
     Function_Decl() = default;
     Function_Decl(const std::string &file,
@@ -109,7 +111,8 @@ struct Function_Decl
                   Value_Type return_type,
                   std::vector<Argument> arguments,
                   int num_required_args,
-                  int num_optional_args)
+                  int num_optional_args,
+                  const std::string &comment)
     {
         this->file = file;
         this->line = line;
@@ -119,6 +122,7 @@ struct Function_Decl
         this->arguments = arguments;
         this->num_required_args = num_required_args;
         this->num_optional_args = num_optional_args;
+        this->comment = comment;
     }
 };
 
