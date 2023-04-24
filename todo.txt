@@ -1,7 +1,6 @@
 TODO:
  * Error feedback
     * Seems to be a bug when handling unfinished line quotes
-    * Handle giving floats as ints better. (How should "1.2" be handled? I guess as 1, since that allows easy function handling?)
     * Make incorrectly formatted floats to give errors. Currently '1.2.3' returns '1.2', which is should be an error instead.
  * Scanning multiple files/directories
  * Namespaces
@@ -14,3 +13,4 @@ TODO:
  * Blog
  * Ask Chat-GPT for feedback
  * Rename to something other than "preprocessor"
+ * Seems volatile to the autoformatter result on client.cpp. INVESTIGATE!

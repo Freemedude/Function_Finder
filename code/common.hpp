@@ -101,7 +101,7 @@ struct Function_Decl
     std::vector<Argument> arguments;
     int num_required_args;
     int num_optional_args;
-    std::string comment;
+    std::string note;
 
     Function_Decl() = default;
     Function_Decl(const std::string &file,
@@ -112,7 +112,7 @@ struct Function_Decl
                   std::vector<Argument> arguments,
                   int num_required_args,
                   int num_optional_args,
-                  const std::string &comment)
+                  const std::string &note)
     {
         this->file = file;
         this->line = line;
@@ -122,7 +122,7 @@ struct Function_Decl
         this->arguments = arguments;
         this->num_required_args = num_required_args;
         this->num_optional_args = num_optional_args;
-        this->comment = comment;
+        this->note = note;
     }
 };
 
@@ -219,7 +219,7 @@ inline size_t get_quoted_string(std::string_view source, std::string &out_result
 inline size_t get_word_length(std::string_view source)
 {
     size_t length = 0;
-    while (length < source.size() && source[length] && !(std::isspace(source[length] || ispunct(source[length]))))
+    while (length < source.size() && source[length] && !std::isspace(source[length]))
     {
         length++;
     }

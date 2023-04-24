@@ -68,6 +68,7 @@ size_t get_argument(std::string_view source, Argument &out_arg)
     if (!length)
     {
         printf("Failed to get argument name at position '%s'\n", source.data());
+        return 0;
     }
 
     final_length += length;
@@ -242,18 +243,18 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
     source = skip_whitespace(source);
     source = advance(source, sizeof("CONSOLE_COMMAND"));
 
-    // Get the comment
     source = skip_whitespace(source);
+
     // We got a comment!
     if(source[0] == '/') 
     {   
         if(source[1] == '/') // Line comment. Nice and easy.
         {
 
-            std::string_view comment_view = advance(source, (size_t)2);
-            comment_view = skip_whitespace(comment_view);
-            auto line_end = comment_view.find('\n');
-            out_function->comment = std::string(comment_view.begin(), comment_view.begin() + line_end);;
+            std::string_view note_view = advance(source, (size_t)2);
+            note_view = skip_whitespace(note_view);
+            auto line_end = note_view.find('\n');
+            out_function->note = std::string(note_view.begin(), note_view.begin() + line_end);;
             source = advance(source, (size_t)source.find('\n') + 1);
         }
         else if('*') // Block comment.
@@ -629,7 +630,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
         file << "        },\n";
         file << "        " << (int)cmd.num_required_args << ",\n";
         file << "        " << (int)cmd.num_optional_args << ",\n";
-        file << "        \"" << cmd.comment << "\"\n";
+        file << "        \"" << cmd.note << "\"\n";
         file << "    );\n";
     }
     file << "\n";

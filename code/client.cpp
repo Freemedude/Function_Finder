@@ -38,7 +38,7 @@ int main(int arg_c, const char **args)
     {
         printf(">");
         auto more = (bool)std::getline(std::cin, line);
-        if(!more)
+        if (!more)
         {
             break;
         }
@@ -48,19 +48,13 @@ int main(int arg_c, const char **args)
             break;
         }
 
-        if (line == "help")
-        {
-            printf("These are the commands:\n");
-            for (const auto &cmd : commands)
-            {
-                printf(" - %s\n", cmd.first.c_str());
-            }
-            printf("\n");
-            continue;
-        }
-
         if (line.starts_with("where"))
         {
+            if (line.size() + 1 == (sizeof("where")))
+            {
+                printf("Type 'where <command>' to see where a command is implemented\n");
+                continue;
+            }
             std::string view(line.begin() + sizeof("where"), line.end());
 
             if (commands.contains(view))
@@ -75,14 +69,27 @@ int main(int arg_c, const char **args)
             continue;
         }
 
-        if (line.starts_with("usage"))
+        if (line.starts_with("help"))
         {
-            std::string view(line.begin() + sizeof("usage"), line.end());
+            if (line == "help")
+            {
+                printf("These are the commands:\n");
+                for (const auto &cmd : commands)
+                {
+                    printf(" - %s\n", cmd.first.c_str());
+                }
+
+                printf("You can get more details about a command with 'help <command>' or 'where <command>'\n");
+                continue;
+            }
+
+            // Getting here indicates there more
+            std::string view(line.begin() + sizeof("help"), line.end());
 
             if (commands.contains(view))
             {
                 auto cmd = commands[view];
-                printf("Command \"%s\" \n\tNote: %s\n\tusage: '%s ", cmd.name.c_str(), cmd.comment.c_str(), cmd.name.c_str());
+                printf("Command \"%s\" \n\tNote: %s\n\tusage: '%s ", cmd.name.c_str(), cmd.note.c_str(), cmd.name.c_str());
                 for (int i = 0; i < cmd.num_required_args; i++)
                 {
                     printf("<%s : %s>", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
@@ -100,9 +107,9 @@ int main(int arg_c, const char **args)
                 for (int i = cmd.num_required_args; i < cmd.arguments.size(); i++)
                 {
                     printf("[%s : %s = ", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
-                    
+
                     output_value_to_stream(std::cout, cmd.arguments[i].default_value);
-                    
+
                     printf("]");
 
                     if (i < cmd.arguments.size() - 1)
@@ -110,9 +117,8 @@ int main(int arg_c, const char **args)
                         printf(" ");
                     }
                 }
-           
-                printf(" -> %s'\n", type_to_readable_string(cmd.return_type).c_str());
 
+                printf(" -> %s'\n", type_to_readable_string(cmd.return_type).c_str());
             }
             else
             {
@@ -131,19 +137,18 @@ int main(int arg_c, const char **args)
         }
 
         std::string function_name = args[0];
-
         args.erase(args.begin(), args.begin() + 1);
 
         if (commands.contains(function_name))
         {
             Value v;
             bool success = commands[function_name].function(args, v);
-            if(!success)
+            if (!success)
             {
                 continue;
             }
 
-            if(v.type != Value_Type::VOID)
+            if (v.type != Value_Type::VOID)
             {
                 output_value_to_stream(std::cout, v);
             }
@@ -158,19 +163,19 @@ int main(int arg_c, const char **args)
     return 0;
 }
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND // Adds two integers.
 int add(int a, int b)
 {
     return a + b;
 }
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND // A float version of the normal add function. Probably the only one you need.
 float add_f(float a, float b)
 {
     return a + b;
 }
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND // String-appends a string 'a' with the float 'b'. Just a tester lmao
 std::string append(std::string a, float b)
 {
     printf("%s\n", a.c_str());
@@ -178,7 +183,7 @@ std::string append(std::string a, float b)
     return result;
 }
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND // Does some fkin nonsense
 void complex(std::string base, int num_prints, bool capitalize = false, std::string to_print = "cringe", int indents = 4)
 {
     if (capitalize)
@@ -200,14 +205,13 @@ void complex(std::string base, int num_prints, bool capitalize = false, std::str
     }
 }
 
-CONSOLE_COMMAND
+CONSOLE_COMMAND // Just returns the input value
 std::string just_return(std::string str = "hello")
 {
     return str;
 }
 
-
-CONSOLE_COMMAND //Squares the second parameter. Ignores the first
+CONSOLE_COMMAND // Squares the second parameter. Ignores the first. Very useful for squaring needs!
 int multiply(int a, double b = 2.1)
 {
     return b * b;
