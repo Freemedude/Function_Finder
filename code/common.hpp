@@ -74,7 +74,7 @@ inline size_t get_quoted_string(std::string_view source, std::string &out_result
 
     if (source[0] != '\"')
     {
-        printf("[ERROR] get_quoted_string() takes a string that  start with a quote (after whitespace)\n");
+        printf("[ERROR] get_quoted_string() takes a string that start with a quote (after whitespace)\n");
         return 0;
     }
     length++;
