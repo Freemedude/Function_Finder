@@ -5,20 +5,20 @@
 #include <vector>
 #include <cstring>
 
-bool string_to_arg_list(const char *args, std::vector<std::string> &out_args)
+bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {
-    const char *cur = args;
-    while (*cur != 0)
+    std::string_view current = source;
+    while (current[0] != 0)
     {
-        cur = skip_whitespace(cur);
+        current = skip_whitespace(current);
         std::string word;
-        int count = get_string(cur, word);
+        size_t count = get_string(current, word);
         if (!count)
         {
-            // No moreeeee
+            // The string ended in whitespace.
             break;
         }
-        cur += count;
+        current = advance(current, count);
         out_args.push_back(word);
     }
 

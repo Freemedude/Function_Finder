@@ -19,40 +19,39 @@ enum class Supported_Type
     BOOLEAN
 };
 
-
-void advance(std::string_view &source, size_t count)
+std::string_view advance(std::string_view source, size_t count)
 {
-    source = source.substr(count);
+    return source.substr(count);
 }
 
-void skip_whitespace(std::string_view &source)
+std::string_view skip_whitespace(std::string_view source)
 {
     size_t count = 0;
     while (std::isspace(source[(int)count]))
     {
         count++;
     }
-    advance(source, count);
+    return advance(source, count);
 }
 
-inline int get_int(std::string_view &source, int &out_result)
+inline size_t get_int(std::string_view source, int &out_result)
 {
-    int len = 0;
+    size_t length = 0;
     if (source[0] == '-' || source[0] == '+')
     {
-        len++;
+        length++;
     }
-    while (std::isdigit(source[len]))
+    while (std::isdigit(source[length]))
     {
-        len++;
+        length++;
     }
 
     out_result = std::atoi(source.data());
 
-    return len;
+    return length;
 }
 
-inline size_t get_bool(std::string_view &source, bool &out_result)
+inline size_t get_bool(std::string_view source, bool &out_result)
 {
     size_t length = 0;
     if (strstr(source.data(), "true") == source)
@@ -69,11 +68,10 @@ inline size_t get_bool(std::string_view &source, bool &out_result)
     return length;
 }
 
-inline size_t get_quoted_string(std::string_view &source, std::string &out_result)
+inline size_t get_quoted_string(std::string_view source, std::string &out_result)
 {
     size_t length = 0;
 
-    skip_whitespace(source);
     if (source[0] != '\"')
     {
         printf("[ERROR] get_quoted_string() takes a string that  start with a quote (after whitespace)\n");
@@ -100,12 +98,12 @@ inline size_t get_quoted_string(std::string_view &source, std::string &out_resul
     return length;
 }
 
-inline size_t get_string(std::string_view &source, std::string &out_result)
+inline size_t get_string(std::string_view source, std::string &out_result)
 {
     size_t length = 0;
 
     bool is_quoted = source[length] == '\"';
-    if(is_quoted)
+    if (is_quoted)
     {
         length = get_quoted_string(source, out_result);
     }
@@ -115,15 +113,14 @@ inline size_t get_string(std::string_view &source, std::string &out_result)
         {
             length++;
         }
-        
-    out_result = std::string(source.begin(), source.begin() + length );
+
+        out_result = std::string(source.begin(), source.begin() + length);
     }
 
     return length;
 }
 
-
-inline size_t get_symbol(std::string_view &source, std::string &out_result)
+inline size_t get_symbol(std::string_view source, std::string &out_result)
 {
     size_t length = 0;
     while (std::isalnum(source[length]) || source[length] == '_' || source[length] == ':')
@@ -136,7 +133,7 @@ inline size_t get_symbol(std::string_view &source, std::string &out_result)
     return length;
 }
 
-inline size_t get_double(std::string_view &source, double &out_result)
+inline size_t get_double(std::string_view source, double &out_result)
 {
     size_t length = 0;
     if (source[0] == '-' || source[0] == '+')
@@ -168,7 +165,7 @@ inline size_t get_double(std::string_view &source, double &out_result)
 
     return length;
 }
-inline size_t get_float(std::string_view &source, float &out_result)
+inline size_t get_float(std::string_view source, float &out_result)
 {
     size_t length = 0;
     if (source[0] == '-' || source[0] == '+')

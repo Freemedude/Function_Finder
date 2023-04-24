@@ -26,53 +26,60 @@ struct Function_Decl
     int num_optional_args;
 };
 
-Supported_Type get_type(std::string_view &source)
+size_t get_type(std::string_view source, Supported_Type &out_type)
 {
-    skip_whitespace(source);
+    size_t result = 0;
+    source = skip_whitespace(source);
     std::string str;
     size_t length = get_symbol(source, str);
     if (!length)
     {
         printf("Failed to get type string from '%s'", source.data());
-        return Supported_Type::UNKNOWN;
+        out_type = Supported_Type::UNKNOWN;
+        return 0;
     }
-    advance(source, length);
 
-    Supported_Type result = Supported_Type::UNKNOWN;
+    result += length;
+    source = advance(source, length);
+
+    Supported_Type type = Supported_Type::UNKNOWN;
     if (str == "double")
     {
-        result = Supported_Type::DOUBLE;
+        type = Supported_Type::DOUBLE;
     }
     if (str == "float")
     {
-        result = Supported_Type::FLOAT;
+        type = Supported_Type::FLOAT;
     }
     if (str == "int")
     {
-        result = Supported_Type::INTEGER;
+        type = Supported_Type::INTEGER;
     }
     else if (str == "std::string")
     {
-        result = Supported_Type::STRING;
+        type = Supported_Type::STRING;
     }
     else if (str == "bool")
     {
-        result = Supported_Type::BOOLEAN;
+        type = Supported_Type::BOOLEAN;
     }
     else if (str == "void")
     {
-        result = Supported_Type::VOID;
+        type = Supported_Type::VOID;
     }
+
+    out_type = type;
 
     return result;
 }
 
-bool get_argument(std::string_view source, Argument &out_arg)
+size_t get_argument(std::string_view source, Argument &out_arg)
 {
-    skip_whitespace(source);
-
-    Supported_Type type = get_type(source);
-    skip_whitespace(source);
+    source = skip_whitespace(source);
+    Supported_Type type;
+    size_t final_length = get_type(source, type);
+    source = advance(source, final_length);
+    source = skip_whitespace(source);
     std::string name;
     size_t length = get_symbol(source, name);
     if (!length)
@@ -80,9 +87,10 @@ bool get_argument(std::string_view source, Argument &out_arg)
         printf("Failed to get argument name at position '%s'\n", source.data());
     }
 
-    advance(source, length);
+    final_length += length;
+    source = advance(source, length);
 
-    skip_whitespace(source);
+    source = skip_whitespace(source);
 
     out_arg.name = name;
     out_arg.type = type;
@@ -91,8 +99,8 @@ bool get_argument(std::string_view source, Argument &out_arg)
     if (source[0] == '=')
     {
         out_arg.has_default_value = true;
-        advance(source, (size_t)1);
-        skip_whitespace(source);
+        source = advance(source, (size_t)1);
+        source = skip_whitespace(source);
         switch (type)
         {
         case Supported_Type::BOOLEAN:
@@ -103,7 +111,8 @@ bool get_argument(std::string_view source, Argument &out_arg)
             if (length)
             {
                 out_arg.default_value = result;
-                advance(source, length);
+                source = advance(source, length);
+                final_length += length;
             }
             else
             {
@@ -118,11 +127,13 @@ bool get_argument(std::string_view source, Argument &out_arg)
             if (length)
             {
                 out_arg.default_value = result;
-                advance(source, length);
+                source = advance(source, length);
+                final_length += length;
+                
             }
             else
             {
-                return false;
+                return 0;
             }
             break;
         }
@@ -133,11 +144,12 @@ bool get_argument(std::string_view source, Argument &out_arg)
             if (length)
             {
                 out_arg.default_value = result;
-                advance(source, length);
+                source = advance(source, length);
+                final_length += length;
             }
             else
             {
-                return false;
+                return 0;
             }
             break;
         }
@@ -149,7 +161,8 @@ bool get_argument(std::string_view source, Argument &out_arg)
             if (length)
             {
                 out_arg.default_value = result;
-                advance(source, length);
+                source = advance(source, length);
+                final_length += length;
             }
             else
             {
@@ -164,32 +177,34 @@ bool get_argument(std::string_view source, Argument &out_arg)
             if (length)
             {
                 out_arg.default_value = result;
-                advance(source, length);
+                source = advance(source, length);
+                final_length += length;
             }
             else
             {
                 printf("Failed to get string default value %s\n", source.data());
+                return 0;
             }
             break;
         }
         }
     }
 
-    return true;
+    return final_length;
 }
 
-bool get_arguments(std::string_view &source, std::vector<Argument> &out_args)
+bool get_arguments(std::string_view source, std::vector<Argument> &out_args)
 {
-    skip_whitespace(source);
+    source = skip_whitespace(source);
 
     if (source[0] != '(')
     {
         return false;
     }
-    advance(source, (size_t)1);
+    source = advance(source, (size_t)1);
 
     // We should now be within the parenthesis
-    skip_whitespace(source);
+    source = skip_whitespace(source);
 
     // Loop over all args
     while (true)
@@ -232,19 +247,20 @@ bool get_arguments(std::string_view &source, std::vector<Argument> &out_args)
         {
             break;
         }
-        advance(source, length);
+        source = advance(source, length);
     }
 
     return true;
 }
 
-bool try_parse_function(std::string_view &source, Function_Decl *out_function)
+size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 {
     // Skip the "CONSOLE_COMMAND" bit
-    skip_whitespace(source);
-    advance(source, sizeof("CONSOLE_COMMAND"));
-    out_function->return_type = get_type(source);
-    skip_whitespace(source);
+    source = skip_whitespace(source);
+    source = advance(source, sizeof("CONSOLE_COMMAND"));
+    size_t final_length = get_type(source, out_function->return_type);
+    source = advance(source, final_length);
+    source = skip_whitespace(source);
 
     size_t length = get_symbol(source, out_function->name);
     if (!length)
@@ -252,7 +268,9 @@ bool try_parse_function(std::string_view &source, Function_Decl *out_function)
         printf("Failed to get function name '%s'\n", source.data());
         return false;
     }
-    advance(source, length);
+
+    final_length += length;
+    source = advance(source, length);
 
     bool success = get_arguments(source, out_function->arguments);
     if (!success)
@@ -303,7 +321,7 @@ bool try_parse_function(std::string_view &source, Function_Decl *out_function)
         std::cout << std::endl;
     }
 #endif
-    return true;
+    return final_length;
 }
 
 bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
@@ -329,7 +347,7 @@ bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
     {
         std::string_view view(content.begin() + pos, content.end());
         Function_Decl func;
-        bool success = try_parse_function(view, &func);
+        size_t success = try_parse_function(view, &func);
 
         inout_commands.push_back(func);
         pos += 1;
@@ -463,7 +481,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
                 }
                 else
                 {
-                    file << "        success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "].c_str(), arg_" << arg.name << ");\n";
+                    file << "        success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
                 }
                 file << "        if(!success)\n";
                 file << "        {\n";
@@ -481,7 +499,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
                 }
                 else
                 {
-                    file << "    success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "].c_str(), arg_" << arg.name << ");\n";
+                    file << "    success = get_" << supported_type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
                 }
                 file << "    if(!success)\n";
                 file << "    {\n";
