@@ -20,11 +20,11 @@ enum class Value_Type
 
 union Value_Data
 {
+    char string_value[128];
     int int_value;
     float float_value;
     double double_value;
     bool bool_value;
-    char string_value[128];
 };
 
 struct Value
@@ -47,12 +47,12 @@ struct Argument
         this->type = type;
     }
 
-    Argument(const std::string &name, Value_Type type, std::string default_value)
+    Argument(const std::string &name, Value_Type type, const char *default_value)
         : Argument(name, type)
     {
         this->has_default_value = true;
         this->default_value.type = Value_Type::STRING;
-        strncpy(this->default_value.data.string_value, default_value.data(), sizeof(this->default_value));
+        strncpy(this->default_value.data.string_value, default_value, sizeof(this->default_value));
     }
 
     Argument(const std::string &name, Value_Type type, int default_value)
@@ -159,14 +159,24 @@ inline size_t get_int(std::string_view source, int &out_result)
 inline size_t get_bool(std::string_view source, bool &out_result)
 {
     size_t length = 0;
-    if (strstr(source.data(), "true") == source)
+    if (source.starts_with("true"))
     {
         length = 4;
         out_result = true;
     }
-    else if (strstr(source.data(), "false") == source)
+    else if (source.starts_with("false"))
     {
         length = 5;
+        out_result = false;
+    }
+    if (source.starts_with("1"))
+    {
+        length = 1;
+        out_result = true;
+    }
+    else if (source.starts_with("0"))
+    {
+        length = 1;
         out_result = false;
     }
 
@@ -351,7 +361,6 @@ inline std::string type_to_readable_string(Value_Type type)
     return "";
 }
 
-
 inline std::string type_to_string(Value_Type type)
 {
     switch (type)
@@ -374,7 +383,6 @@ inline std::string type_to_string(Value_Type type)
 
 inline void output_value_to_stream(std::ostream &stream, const Value &value)
 {
-    printf("TYPE: %d\n", value.type);
     switch (value.type)
     {
     case Value_Type::VOID:
@@ -387,13 +395,13 @@ inline void output_value_to_stream(std::ostream &stream, const Value &value)
         stream << value.data.int_value;
         break;
     case Value_Type::FLOAT:
-        stream << value.data.float_value << "f";
+        stream << std::to_string(value.data.float_value) << "f";
         break;
     case Value_Type::DOUBLE:
-        stream << value.data.double_value;
-        break;
+        stream << std::to_string(value.data.double_value);
+    break;
     case Value_Type::BOOLEAN:
-        stream << value.data.bool_value;
+        stream << value.data.bool_value ? "true" : "false";
         break;
     default:
         break;

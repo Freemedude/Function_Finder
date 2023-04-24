@@ -83,7 +83,6 @@ size_t get_argument(std::string_view source, Argument &out_arg)
     {
         out_arg.has_default_value = true;
         out_arg.default_value.type = type;
-        printf("Default value %s has type %d\n", name.c_str(), (int)type);
         source = advance(source, (size_t)1);
         source = skip_whitespace(source);
         switch (type)
@@ -465,9 +464,17 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
             file << "    " << type_to_cpp_type(arg.type) << " arg_" << arg.name;
             if (arg.has_default_value)
             {
-                file << " = \"";
-                output_value_to_stream(file, arg.default_value);
-                file << "\"";
+                file << " = ";
+                if (arg.type == Value_Type::STRING)
+                {
+                    file << "\"";
+                    output_value_to_stream(file, arg.default_value);
+                    file << "\"";
+                }
+                else
+                {
+                    output_value_to_stream(file, arg.default_value);
+                }
             }
             file << ";\n";
 
@@ -515,7 +522,23 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
         }
         file << "    out_result.type = " << type_to_string(cmd.return_type) << ";\n";
 
-        if (cmd.return_type == Value_Type::STRING)
+        if (cmd.return_type == Value_Type::VOID)
+        {
+            // This function call code is copy pasted 3 times, time to func it.
+            file << "    " << cmd.name << "(";
+            for (int i = 0; i < cmd.arguments.size(); i++)
+            {
+                const Argument &arg = cmd.arguments[i];
+                file << "arg_" << arg.name;
+
+                if (i < cmd.arguments.size() - 1)
+                {
+                    file << ", ";
+                }
+            }
+            file << ");\n\n";
+        }
+        else if (cmd.return_type == Value_Type::STRING)
         {
 
             file << "    std::string result = " << cmd.name << "(";
@@ -564,23 +587,30 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
         file << "    out_commands[\"" << cmd.name << "\"] = Function_Decl(";
         file << "\"" << cmd.file << "\", (size_t)" << cmd.line << ", "
              << "&command_" << cmd.name << ", "
-             << "\"" << cmd.name << "\", (Value_Type)" << (int)cmd.return_type << ",\n";
+             << "\"" << cmd.name << "\", " << type_to_string(cmd.return_type) << ",\n";
         file << "        // Arguments\n";
         file << "        {\n";
         for (size_t i = 0; i < cmd.arguments.size(); i++)
         {
             const auto &arg = cmd.arguments[i];
-            file << "            // Argument " << arg.name << std::endl;
             file << "            Argument(";
 
             file << "\"" << arg.name << "\", ";
-            file << "(Value_Type)" << (int)arg.type;
+            file << type_to_string(arg.type);
             if (arg.has_default_value)
             {
                 file << ", ";
-                file << "\"";
-                output_value_to_stream(file, arg.default_value);
-                file << "\"";
+                if (arg.default_value.type == Value_Type::STRING)
+                {
+                    file << "\"";
+                    output_value_to_stream(file, arg.default_value);
+                    file << "\"";
+                }
+                else
+                {
+                    file << "("<< type_to_cpp_type(arg.default_value.type) << ")";
+                    output_value_to_stream(file, arg.default_value);
+                }
             }
 
             file << ")";
