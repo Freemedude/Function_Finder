@@ -165,6 +165,7 @@ inline size_t get_double(std::string_view source, double &out_result)
 
     return length;
 }
+
 inline size_t get_float(std::string_view source, float &out_result)
 {
     size_t length = 0;
