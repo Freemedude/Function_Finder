@@ -1,11 +1,8 @@
 TODO:
  * Error feedback
     * Seems to be a bug when handling unfinished line quotes
-    * Make incorrectly formatted floats to give errors. Currently '1.2.3' returns '1.2', which is should be an error instead.
  * Scanning multiple files/directories
  * Namespaces
- * Add tracing info to hint where a function came from (File and line number?)
- * Add more feedback (Usage etc.)
  * Documentation
  * Cleanup
  * Modernization
