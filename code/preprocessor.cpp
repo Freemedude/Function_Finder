@@ -266,6 +266,13 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
         }
     }
 
+    // Check for 'inline' modifier
+    source = skip_whitespace(source);
+    if(source.starts_with("inline"))
+    {
+        source = advance(source, sizeof("inline"));
+    }
+
     size_t final_length = get_type(source, out_function->return_type);
     source = advance(source, final_length);
     source = skip_whitespace(source);
@@ -448,7 +455,7 @@ bool write_output_file(const std::filesystem::path &path, std::vector<Function_D
     {
         // Function definition
         file << "// Generated based on function \"" << cmd.name << "\" from file \"" << cmd.file << "\" line " << cmd.line << "\n";
-        file << "bool command_" << cmd.name << "(std::vector<std::string> &args, Value &out_result)\n";
+        file << "inline bool command_" << cmd.name << "(std::vector<std::string> &args, Value &out_result)\n";
         file << "{\n";
 
         // Confirm number of arguments
