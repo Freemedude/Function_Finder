@@ -6,6 +6,9 @@
 #include <sstream>
 #include <cctype>
 #include <format>
+#include <filesystem>
+#include <functional>
+#include <algorithm>
 
 #include "common.hpp"
 
@@ -246,23 +249,22 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
     source = skip_whitespace(source);
 
     // We got a comment!
-    if(source[0] == '/') 
-    {   
-        if(source[1] == '/') // Line comment. Nice and easy.
+    if (source[0] == '/')
+    {
+        if (source[1] == '/') // Line comment. Nice and easy.
         {
 
             std::string_view note_view = advance(source, (size_t)2);
             note_view = skip_whitespace(note_view);
             auto line_end = note_view.find('\n');
-            out_function->note = std::string(note_view.begin(), note_view.begin() + line_end);;
+            out_function->note = std::string(note_view.begin(), note_view.begin() + line_end);
+            ;
             source = advance(source, (size_t)source.find('\n') + 1);
         }
-        else if('*') // Block comment.
+        else if ('*') // Block comment.
         {
-
         }
     }
-
 
     size_t final_length = get_type(source, out_function->return_type);
     source = advance(source, final_length);
@@ -615,7 +617,7 @@ bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
                 file << ", ";
                 if (arg.default_value.type != Value_Type::STRING)
                 {
-                    file << "("<< type_to_cpp_type(arg.default_value.type) << ")";
+                    file << "(" << type_to_cpp_type(arg.default_value.type) << ")";
                 }
                 output_value_to_stream(file, arg.default_value);
             }
@@ -651,8 +653,51 @@ int main(int arg_count, const char **args)
     const char *dst = args[2];
 
     printf("Preprocessing '%s' into '%s'\n", src, dst);
+
+    if (!std::filesystem::is_regular_file(dst))
+    {
+        printf("Input 2 must be a regular file to output to.\n");
+        return 2;
+    }
+    
     std::vector<Function_Decl> commands;
-    parse_file(src, commands);
+    if (std::filesystem::is_regular_file(src))
+    {
+        parse_file(src, commands);
+    }
+    else
+    {
+        // It's a directory
+        const std::vector<std::string> accepted_extensions = {
+            ".cpp", ".hpp", ".h", ".c", ".cxx"};
+
+        std::function<void(const std::filesystem::path & path)> scan_directory;
+
+        scan_directory = [&](const std::filesystem::path &path)
+        {
+            for (const auto &ele : std::filesystem::directory_iterator(path))
+            {
+                if (ele.is_regular_file())
+                {
+                    if (std::any_of(accepted_extensions.begin(), accepted_extensions.end(), [&](const std::string &ex)
+                                 { return ele.path().extension() == ex; }))
+                    {
+                        write_output_file((char*)ele.path().c_str(), commands);
+                    }
+                }
+                else if (ele.is_directory())
+                {
+                    scan_directory(ele.path());
+                }
+                else
+                {
+                    printf("Dunno what '%s' is...\n", (char*)ele.path().c_str());
+                }
+            }
+        };
+
+        scan_directory(dst);
+    }
 
     write_output_file(dst, commands);
 }
