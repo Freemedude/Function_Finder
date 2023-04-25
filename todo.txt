@@ -11,3 +11,4 @@ TODO:
  * Seems volatile to the autoformatter result on client.cpp. INVESTIGATE!
  * Make the search term configurable, so it's usable for other things.
  * Consider a smarter line-writer solution. Current solution is very ugly.
+ * Support inline functions. I see them being used.

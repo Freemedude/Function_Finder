@@ -1,4 +1,4 @@
-#include "common.hpp"
+#include "../common.hpp"
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "output.hpp"
+#include "client_hdr.hpp"
 
 bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {

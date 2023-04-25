@@ -332,13 +332,13 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
     return final_length;
 }
 
-bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
+bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_commands)
 {
     // Gather declarations
     std::ifstream file(path);
     if (!file.is_open())
     {
-        printf("Couldn't find source file '%s'!\n", path);
+        printf("Couldn't find source file '%lls'!\n", path.c_str());
         return false;
     }
 
@@ -367,7 +367,7 @@ bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
             Function_Decl func;
             try_parse_function(file_view, &func);
             func.line = line + 1;
-            func.file = std::string(path);
+            func.file = path.generic_string();
             inout_commands.push_back(func);
         }
     }
@@ -387,12 +387,12 @@ bool parse_file(const char *path, std::vector<Function_Decl> &inout_commands)
     return true;
 }
 
-bool write_output_file(const char *path, std::vector<Function_Decl> &commands)
+bool write_output_file(const std::filesystem::path &path, std::vector<Function_Decl> &commands)
 {
     std::ofstream file(path);
     if (!file.is_open())
     {
-        printf("Couldn't create destination file '%s'!\n", path);
+        printf("Couldn't create destination file '%lls'!\n", path.c_str());
         return false;
     }
 
@@ -652,7 +652,6 @@ int main(int arg_count, const char **args)
     const char *src = args[1];
     const char *dst = args[2];
 
-    printf("Preprocessing '%s' into '%s'\n", src, dst);
 
     if (!std::filesystem::is_regular_file(dst))
     {
@@ -663,6 +662,7 @@ int main(int arg_count, const char **args)
     std::vector<Function_Decl> commands;
     if (std::filesystem::is_regular_file(src))
     {
+        printf("Preprocessing '%s' into '%s'\n", src, dst);
         parse_file(src, commands);
     }
     else
@@ -672,21 +672,25 @@ int main(int arg_count, const char **args)
             ".cpp", ".hpp", ".h", ".c", ".cxx"};
 
         std::function<void(const std::filesystem::path & path)> scan_directory;
-
+        
         scan_directory = [&](const std::filesystem::path &path)
         {
+            std::cout << "Scanning directory "<< path << std::endl;
             for (const auto &ele : std::filesystem::directory_iterator(path))
             {
+                printf("Checking entry!\n");
                 if (ele.is_regular_file())
                 {
+                    printf("Is file '%lls'!\n", ele.path().c_str());
                     if (std::any_of(accepted_extensions.begin(), accepted_extensions.end(), [&](const std::string &ex)
                                  { return ele.path().extension() == ex; }))
                     {
-                        write_output_file((char*)ele.path().c_str(), commands);
+                        parse_file(ele.path(), commands);
                     }
                 }
                 else if (ele.is_directory())
                 {
+                    printf("Is dir '%lls'!\n", ele.path().c_str());
                     scan_directory(ele.path());
                 }
                 else
@@ -696,7 +700,7 @@ int main(int arg_count, const char **args)
             }
         };
 
-        scan_directory(dst);
+        scan_directory(src);
     }
 
     write_output_file(dst, commands);

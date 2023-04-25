@@ -7,16 +7,16 @@ pushd out
 if not exist include mkdir include
 
 echo Building Preprocessor
-cl /nologo /Zi ..\code\preprocessor.cpp /EHsc /std:c++20 /link /DEBUG:FULL
+cl /nologo /Zi ../code/preprocessor.cpp /EHsc /std:c++20 /link /DEBUG:FULL
 if %ERRORLEVEL% neq 0 goto :error
 echo:
 
 echo Running preprocessor
-preprocessor.exe ../code/client.cpp include/output.hpp
+preprocessor.exe ../code/client include/output.hpp
 if %ERRORLEVEL% neq 0 goto :error
 
 echo Building client
-cl /nologo  /Zi ..\code\client.cpp -Iinclude /std:c++20  /EHsc /std:c++20 /link /DEBUG:FULL
+cl /nologo  /Zi ../code/client/client.cpp -Iinclude -I../code /std:c++20 /EHsc /std:c++20 /link /DEBUG:FULL
 if %ERRORLEVEL% neq 0 goto :error
 echo:
 
