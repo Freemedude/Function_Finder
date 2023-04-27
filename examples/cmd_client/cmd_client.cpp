@@ -1,4 +1,3 @@
-#include "function_finder/function_finder.hpp"
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -6,7 +5,9 @@
 #include <cstring>
 #include <algorithm>
 
-#include "output.hpp"
+#include "function_finder/function_finder.hpp"
+#include "console_commands_out.hpp"
+#include "other_console_commands_out.hpp"
 #include "cmd_client.hpp"
 
 bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
@@ -38,8 +39,10 @@ bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_a
 
 int main(int arg_c, const char **args)
 {
+    Command_Map trash;
     Command_Map commands;
-    init_commands(commands);
+    init_console_commands(commands);
+    init_other_console_commands(trash);
 
     std::string line;
     while (true)

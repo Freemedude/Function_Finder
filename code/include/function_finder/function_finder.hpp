@@ -1,7 +1,5 @@
 #pragma once
 
-#define CONSOLE_COMMAND
-
 #include <cstring>
 #include <string>
 #include <iostream>

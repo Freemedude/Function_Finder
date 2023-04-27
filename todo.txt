@@ -8,3 +8,4 @@ TODO:
  * Make the search term configurable, so it's usable for other things.
  * Consider a smarter line-writer solution. Current solution is very ugly.
  * Blog
+ * Support block comments as notes! This means multi-line!
