@@ -51,7 +51,7 @@ struct Argument
     {
         this->has_default_value = true;
         this->default_value.type = Value_Type::STRING;
-        strncpy(this->default_value.data.string_value, default_value, sizeof(this->default_value));
+        strncpy(this->default_value.data.string_value, default_value, sizeof(this->default_value.data.string_value));
     }
 
     Argument(const std::string &name, Value_Type type, int default_value)
@@ -93,13 +93,13 @@ struct Function_Decl
 {
     std::string file = "UNSET";
     size_t line = 0;
-    Command_Wrapper function;
-    std::string name;
-    Value_Type return_type;
+    Command_Wrapper function = nullptr;
+    std::string name = "UNSET";
+    Value_Type return_type = Value_Type::UNKNOWN;
     std::vector<Argument> arguments;
-    int num_required_args;
-    int num_optional_args;
-    std::string note;
+    int num_required_args = -1;
+    int num_optional_args = -1;
+    std::string note = "";
 
     Function_Decl() = default;
     Function_Decl(const std::string &file,
