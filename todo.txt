@@ -7,4 +7,3 @@ TODO:
  * Seems volatile to the autoformatter result on client.cpp. INVESTIGATE!
  * Consider a smarter line-writer solution. Current solution is very ugly.
  * Blog
- * Support block comments as notes! This means multi-line!

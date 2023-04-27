@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <functional>
 #include <string_view>
+#include <regex>
 #include <algorithm>
 
 #include "function_finder/function_finder.hpp"
@@ -252,11 +253,25 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 			note_view = skip_whitespace(note_view);
 			auto line_end = note_view.find('\n');
 			out_function->note = std::string(note_view.begin(), note_view.begin() + line_end);
-			;
 			source = advance(source, (size_t)source.find('\n') + 1);
 		}
-		else if ('*') // Block comment.
+		else if (source[1] == '*') // Block comment.
 		{
+			// Find the end of the comment.
+			auto comment_end = source.find("*/");
+			if(comment_end == std::string_view::npos)
+			{
+				// There is no end to this block comment. It will consume us all.
+				return 0;
+			}
+
+			std::string_view note_view(source.begin() + 2, source.begin() + comment_end);
+			note_view = skip_whitespace(note_view);
+			out_function->note = std::string(note_view.begin(), note_view.end());
+			
+			// Sanitize.
+			out_function->note = std::regex_replace(out_function->note, std::regex("\n"), "\\n");
+			source = advance(source, comment_end + 2); // +2 to skip the '*/' bit
 		}
 	}
 

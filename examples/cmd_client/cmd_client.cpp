@@ -100,7 +100,7 @@ int main(int arg_c, const char **args)
             if (commands.contains(view))
             {
                 auto cmd = commands[view];
-                printf("Command \"%s\" \n\tNote: %s\n\tusage: '%s ", cmd.name.c_str(), cmd.note.c_str(), cmd.name.c_str());
+                printf("Command \"%s\" \n\tNote: %s\n\tUsage: '%s ", cmd.name.c_str(), cmd.note.c_str(), cmd.name.c_str());
                 for (int i = 0; i < cmd.num_required_args; i++)
                 {
                     printf("<%s : %s>", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
@@ -180,13 +180,17 @@ int main(int arg_c, const char **args)
     return 0;
 }
 
-CONSOLE_COMMAND // Adds two integers.
+CONSOLE_COMMAND
+/* Hello there. This function adds two numbers. a, and b.
+DEPRECATED
+*/
 int add(int a, int b)
 {
     return a + b;
 }
 
-CONSOLE_COMMAND // A float version of the normal add function. Probably the only one you need.
+CONSOLE_COMMAND 
+// A float version of the normnhnhal add function. Probably the only one you need.
 float add_f(float a, float b)
 {
     return a + b;
