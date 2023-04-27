@@ -13,7 +13,7 @@ set_property(TARGET Function_Finder_Lib PROPERTY CXX_STANDARD 20)
 option(FUNCTION-FINDER_BUILD_FROM_SOURCE "Build Function Finder from Source. Use if you want to compile it from scratch, rather than using a precompiled exe." true)
 
 if(FUNCTION-FINDER_BUILD_FROM_SOURCE)
-    add_executable(Function_Finder_Exe function_finder.cpp)
+    add_executable(Function_Finder_Exe function_finder.cpp include/function_finder/function_finder.hpp)
     target_link_libraries(Function_Finder_Exe PRIVATE Function_Finder_Lib)
     set_property(TARGET Function_Finder_Exe PROPERTY CXX_STANDARD 20)
 
