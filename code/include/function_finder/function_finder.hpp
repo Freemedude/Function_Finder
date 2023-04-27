@@ -128,29 +128,31 @@ struct Function_Decl
 
 typedef std::unordered_map<std::string, Function_Decl> Command_Map;
 
-std::string_view advance(std::string_view source, size_t count)
+std::string_view advance(std::string_view source, size_t length)
 {
-    return source.substr(count);
+    return source.substr(length);
 }
 
 std::string_view skip_whitespace(std::string_view source)
 {
-    size_t count = 0;
-    while (std::isspace(source[(int)count]))
+    size_t max_length = source.size();
+    size_t length = 0;
+    while (length < max_length && std::isspace(source[(int)length]))
     {
-        count++;
+        length++;
     }
-    return advance(source, count);
+    return advance(source, length);
 }
 
 inline size_t get_int(std::string_view source, int &out_result)
 {
+    size_t max_length = source.size();
     size_t length = 0;
-    if (source[0] == '-' || source[0] == '+')
+    if (length < max_length && source[0] == '-' || source[0] == '+')
     {
         length++;
     }
-    while (std::isdigit(source[length]))
+    while (length < max_length && std::isdigit(source[length]))
     {
         length++;
     }
@@ -247,8 +249,9 @@ inline size_t get_string(std::string_view source, std::string &out_result)
 
 inline size_t get_symbol(std::string_view source, std::string &out_result)
 {
+    size_t max_length = source.size();
     size_t length = 0;
-    while (std::isalnum(source[length]) || source[length] == '_' || source[length] == ':')
+    while (length < max_length && (std::isalnum(source[length]) || source[length] == '_' || source[length] == ':'))
     {
         length++;
     }
@@ -260,28 +263,29 @@ inline size_t get_symbol(std::string_view source, std::string &out_result)
 
 inline size_t get_double(std::string_view source, double &out_result)
 {
+    size_t max_length = source.size();
     size_t total_length = get_word_length(source);
     size_t length = 0;
     bool had_digits = false;
 
-    if (source[0] == '-' || source[0] == '+')
+    if (length < max_length && (source[0] == '-' || source[0] == '+'))
     {
         length++;
     }
 
-    while (std::isdigit(source[length]))
+    while (length < max_length && std::isdigit(source[length]))
     {
         length++;
         had_digits = true;
     }
 
     // Handle comma separation
-    if (source[length] == '.')
+    if (length < max_length && source[length] == '.')
     {
         length++;
     }
 
-    while (std::isdigit(source[length]))
+    while (length < max_length && std::isdigit(source[length]))
     {
         length++;
         had_digits = true;
@@ -306,34 +310,35 @@ inline size_t get_double(std::string_view source, double &out_result)
 
 inline size_t get_float(std::string_view source, float &out_result)
 {
+    size_t max_length = source.size();
     size_t total_length = get_word_length(source);
     size_t length = 0;
     bool had_digits = false;
 
-    if (source[0] == '-' || source[0] == '+')
+    if (length < max_length && (source[0] == '-' || source[0] == '+'))
     {
         length++;
     }
 
-    while (std::isdigit(source[length]))
+    while (length < max_length && std::isdigit(source[length]))
     {
         length++;
         had_digits = true;
     }
 
     // Handle comma separation
-    if (source[length] == '.')
+    if (length < max_length && source[length] == '.')
     {
         length++;
     }
 
-    while (std::isdigit(source[length]))
+    while (length < max_length && std::isdigit(source[length]))
     {
         length++;
         had_digits = true;
     }
 
-    if (source[length] == 'f')
+    if (length < max_length && source[length] == 'f')
     {
         length++;
     }

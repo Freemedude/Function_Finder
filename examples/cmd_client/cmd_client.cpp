@@ -1,4 +1,4 @@
-#include "../common.hpp"
+#include "function_finder/function_finder.hpp"
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -7,14 +7,19 @@
 #include <algorithm>
 
 #include "output.hpp"
-#include "client_hdr.hpp"
+#include "cmd_client.hpp"
 
 bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {
-    std::string_view current = source;
-    while (current[0] != 0)
+    size_t max_length = source.size();
+    size_t length = 0;
+
+    while (length < max_length && source[length] != 0)
     {
-        current = skip_whitespace(current);
+        auto current = advance(source, length);
+        auto after_whitespace = skip_whitespace(current);
+        length += current.size() - after_whitespace.size();
+        current = after_whitespace;
         std::string word;
         size_t count = get_string(current, word);
         if (!count)
@@ -22,7 +27,9 @@ bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_a
             // The string ended in whitespace.
             return false;
         }
-        current = advance(current, count);
+        auto after_word = advance(current, count);
+        length += current.size() - after_word.size();
+
         out_args.push_back(word);
     }
 
@@ -61,7 +68,7 @@ int main(int arg_c, const char **args)
             if (commands.contains(view))
             {
                 auto cmd = commands[view];
-                printf("You can find command \"%s\" at %s:L%zu\n", view.data(), cmd.file.c_str(), cmd.line);
+                printf("You can find command \"%s\" at %s : L%zu\n", view.data(), cmd.file.c_str(), cmd.line);
             }
             else
             {

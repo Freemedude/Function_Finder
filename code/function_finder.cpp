@@ -2,15 +2,15 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <regex>
 #include <sstream>
 #include <cctype>
 #include <format>
 #include <filesystem>
 #include <functional>
+#include <string_view>
 #include <algorithm>
 
-#include "common.hpp"
+#include "function_finder/function_finder.hpp"
 
 size_t get_type(std::string_view source, Value_Type &out_type)
 {
@@ -81,9 +81,9 @@ size_t get_argument(std::string_view source, Argument &out_arg)
 
     out_arg.name = name;
     out_arg.type = type;
-
+    
     // Check for default value
-    if (source[0] == '=')
+    if (source.size() > 0 && source[0] == '=')
     {
         out_arg.has_default_value = true;
         out_arg.default_value.type = type;
@@ -357,7 +357,7 @@ bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &i
     std::string_view file_view(content.begin(), content.end());
     size_t line = 1;
     int count = 0;
-#if 1
+
     while (true)
     {
         auto next_line_end = file_view.find('\n');
@@ -372,25 +372,13 @@ bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &i
         if (file_view.starts_with("CONSOLE_COMMAND"))
         {
             Function_Decl func;
-            try_parse_function(file_view, &func);
             func.line = line + 1;
             func.file = path.generic_string();
+            try_parse_function(file_view, &func);
             inout_commands.push_back(func);
         }
     }
 
-#else
-    size_t pos = 0;
-    while ((pos = content.find("\nCONSOLE_COMMAND", pos)) != std::string_view::npos)
-    {
-        std::string_view view(content.begin() + pos, content.end());
-        Function_Decl func;
-        size_t success = try_parse_function(view, &func);
-
-        inout_commands.push_back(func);
-        pos += 1;
-    }
-#endif
     return true;
 }
 
@@ -415,7 +403,7 @@ bool write_output_file(const std::filesystem::path &path, std::vector<Function_D
     file << "// Includes:\n";
     file << "#include <unordered_map>\n";
     file << "#include <string>\n";
-    file << "#include \"common.hpp\"\n";
+    file << "#include \"function_finder/function_finder.hpp\"\n";
     file << std::endl
          << std::endl;
 
@@ -658,14 +646,19 @@ int main(int arg_count, const char **args)
     }
     const char *src = args[1];
     const char *dst = args[2];
+        
+    std::filesystem::path src_path = args[1];
+    std::filesystem::path dst_path = args[2];
 
-
-    if (!std::filesystem::is_regular_file(dst))
+    if(!dst_path.has_extension())
     {
-        printf("Input 2 must be a regular file to output to.\n");
+        printf("Dst must be a file!\n");
         return 2;
     }
-    
+
+
+    std::filesystem::create_directories(dst_path.parent_path());
+
     std::vector<Function_Decl> commands;
     if (std::filesystem::is_regular_file(src))
     {
@@ -682,13 +675,10 @@ int main(int arg_count, const char **args)
         
         scan_directory = [&](const std::filesystem::path &path)
         {
-            std::cout << "Scanning directory "<< path << std::endl;
             for (const auto &ele : std::filesystem::directory_iterator(path))
             {
-                printf("Checking entry!\n");
                 if (ele.is_regular_file())
                 {
-                    printf("Is file '%lls'!\n", ele.path().c_str());
                     if (std::any_of(accepted_extensions.begin(), accepted_extensions.end(), [&](const std::string &ex)
                                  { return ele.path().extension() == ex; }))
                     {
@@ -697,7 +687,6 @@ int main(int arg_count, const char **args)
                 }
                 else if (ele.is_directory())
                 {
-                    printf("Is dir '%lls'!\n", ele.path().c_str());
                     scan_directory(ele.path());
                 }
                 else

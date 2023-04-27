@@ -1,2 +1,4 @@
 .vscode/
 out/
+cmake_out/
+/bin/
