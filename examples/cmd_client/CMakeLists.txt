@@ -9,12 +9,16 @@ set_property(TARGET Cmd_Client PROPERTY CXX_STANDARD 20)
 
 set(input_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 set(output_dir "${CMAKE_BINARY_DIR}/include")
-set(output_file "${output_dir}/output.hpp")
+set(output_file "${output_dir}/console_commands_out.hpp")
 
 message ("EXECUTABLE: ${FUNCTION-FINDER_EXE_PATH} ")
 message ("INPUT: ${input_dir}")
 message ("OUTPUT: ${output_file}")
 
+
+if(FUNCTION-FINDER_BUILD_FROM_SOURCE)
+    add_dependencies(Cmd_Client Function_Finder_Exe)
+endif(FUNCTION-FINDER_BUILD_FROM_SOURCE)
 
 add_custom_command(TARGET Cmd_Client
     PRE_BUILD
