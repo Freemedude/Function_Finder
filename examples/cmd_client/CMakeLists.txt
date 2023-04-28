@@ -6,9 +6,8 @@ target_link_libraries(Cmd_Client PRIVATE Function_Finder_Lib)
 
 set_property(TARGET Cmd_Client PROPERTY CXX_STANDARD 20)
 
-
 set(input_dir "${CMAKE_CURRENT_SOURCE_DIR}")
-set(output_dir "${CMAKE_BINARY_DIR}/include")
+set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(output_file "${output_dir}/console_commands_out.hpp")
 
 message ("EXECUTABLE: ${FUNCTION-FINDER_EXE_PATH} ")

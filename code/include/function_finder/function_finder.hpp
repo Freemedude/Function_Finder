@@ -104,15 +104,16 @@ struct Function_Decl
 
 	Function_Decl() = default;
 	Function_Decl(
-		Command_Wrapper function,
 		std::string name,
+		Command_Wrapper function,
 		Value_Type return_type,
 		int num_required_args,
 		int num_optional_args,
-		std::vector<Argument> arguments,
-		const std::string &note,
 		const std::string &file,
-		size_t line)
+		size_t line,
+		std::vector<Argument> arguments,
+		const std::string &note
+	)
 	{
 		this->file = file;
 		this->line = line;

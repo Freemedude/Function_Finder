@@ -7,7 +7,6 @@
 
 #include "function_finder/function_finder.hpp"
 #include "console_commands_out.hpp"
-#include "other_console_commands_out.hpp"
 #include "cmd_client.hpp"
 
 const std::string WHERE_COMMAND = "where";

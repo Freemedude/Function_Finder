@@ -601,10 +601,11 @@ bool export_functions(const Settings &settings, std::vector<Function_Decl> &func
 
 			// Create variable
 			w << std::format("// {} argument {}: '{} {}'", arg.has_default_value ? "Optional" : "Required", i, type_to_cpp_type(arg.type), arg.name);
-			w << std::format("{} arg_{};", type_to_cpp_type(arg.type), arg.name);
 
 			if (arg.has_default_value)
 			{
+				w << std::format("{} arg_{} = {};", type_to_cpp_type(arg.type), arg.name, value_to_string(arg.default_value));
+				
 				// Check if replacement variable has been provided
 				w << std::format("if(args.size() > {})", i);
 				w << "{";
@@ -616,17 +617,25 @@ bool export_functions(const Settings &settings, std::vector<Function_Decl> &func
 					w << "success = true;";
 					w << std::format("arg_{} = args[{}];", arg.name, i);
 				}
+				else
+				{
+					w << std::format("success = get_{}(args[{}], arg_{});", type_to_readable_string(arg.type), i, arg.name);
+				}
 			}
 			else
 			{
+				w << std::format("{} arg_{};", type_to_cpp_type(arg.type), arg.name);
 				if (arg.type == Value_Type::STRING)
 				{
 					w << "success = true;";
 					w << std::format("arg_{} = args[{}];", arg.name, i);
 				}
+				else
+				{
+					w << std::format("success = get_{}(args[{}], arg_{});", type_to_readable_string(arg.type), i, arg.name);
+				}
 			}
 
-			w << std::format("success = get_{}(args[{}], arg_{});", type_to_readable_string(arg.type), i, arg.name);
 			w << "if(!success)";
 			w << "{";
 			w.indent();
@@ -679,7 +688,7 @@ bool export_functions(const Settings &settings, std::vector<Function_Decl> &func
 	w << "//////////////////////////////";
 	w.skip_line();
 
-	w << std::format("void {}(Command_Map &out_commands)", settings.init_function_name);
+	w << std::format("void {}(Function_Map &out_commands)", settings.init_function_name);
 	w << "{";
 	w.indent();
 
@@ -824,6 +833,89 @@ int main(int arg_count, const char **args)
 					std::cout << ", ";
 				}
 			}
+			std::cout << "\n";
+		}
+		if (arg_1 == "--example")
+		{
+			std::cout << "// Example of usage code:\n";
+			std::cout << "// For this example, run Function Finder with these arguments 'client.cpp output.hpp MY_COMMAND init_my_commands':\n";
+			std::cout << "// client.cpp\n";
+			std::cout << "\n";
+			std::cout << "#include <iostream>\n";
+			std::cout << "#include <format>\n";
+			std::cout << "#include \"function_finder/function_finder.hpp\"\n";
+			std::cout << "#include \"output.hpp\"\n";
+			std::cout << "\n";
+			std::cout << "#define MY_COMMAND\n";
+			std::cout << "\n";
+			std::cout << "int main()\n";
+			std::cout << "{\n";
+			std::cout << "\n";
+			std::cout << "    Function_Map commands;\n";
+			std::cout << "    init_my_commands(commands);\n";
+			std::cout << "\n";
+			std::cout << "    // This is the variable we output all the commands to:\n";
+			std::cout << "    Value value;\n";
+			std::cout << "\n";
+			std::cout << "    std::cout << \"Correct usage:\\n\";\n";
+			std::cout << "    std::vector<std::string> args = {\"5\", \"1.2f\", \"42.0\", \"Not using the default!\", \"false\"};\n";
+			std::cout << "    std::cout << \"    \";\n";
+			std::cout << "    commands[\"some_command\"].function(args, value);\n";
+			std::cout << "    std::cout << \"    \" << value_to_string(value) << \"\\n\";\n";
+			std::cout << "    std::cout << \"\\n\";\n";
+			std::cout << "\n";
+			std::cout << "    std::cout << \"Correct usage using defaults:\\n\";\n";
+			std::cout << "    args = {\"5\", \"1.2f\", \"42.0\"};\n";
+			std::cout << "    std::cout << \"    \";\n";
+			std::cout << "    commands[\"some_command\"].function(args, value);\n";
+			std::cout << "    std::cout << \"    \" << value_to_string(value) << \"\\n\";\n";
+			std::cout << "    std::cout << \"\\n\";\n";
+			std::cout << "\n";
+			std::cout << "    std::cout << \"Correct usage, wrong type:\\n\";\n";
+			std::cout << "    args = {\"5\", \"Woups! A string doesn't go here!\", \"5\"};\n";
+			std::cout << "    std::cout << \"    \";\n";
+			std::cout << "    commands[\"some_command\"].function(args, value);\n";
+			std::cout << "    std::cout << \"\\n\";\n";
+			std::cout << "\n";
+			std::cout << "    std::cout << \"Correct usage, wrong number of arguments:\\n\";\n";
+			std::cout << "    args = {\"5\"};\n";
+			std::cout << "    std::cout << \"    \";\n";
+			std::cout << "    commands[\"some_command\"].function(args, value);\n";
+			std::cout << "    std::cout << \"\\n\";\n";
+			std::cout << "\n";
+			std::cout << "    // To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\n";
+			std::cout << "    std::cout << \"To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\\n\";\n";
+			std::cout << "    Function_Decl &command = commands[\"some_command\"];\n";
+			std::cout << "    std::cout << \" - File:\" << command.file << \"\\n\";\n";
+			std::cout << "    std::cout << \" - Line:\" << command.line << \"\\n\";\n";
+			std::cout << "    std::cout << \" - Name:\" << command.name << \"\\n\";\n";
+			std::cout << "    std::cout << \" - Note (The comment after the search term):\" << command.note << \"\\n\";\n";
+			std::cout << "    std::cout << \" - Return type:\" << type_to_string(command.return_type) << \"\\n\";\n";
+			std::cout << "    std::cout << \" - Argument information (types, names, and default arguments.):\";\n";
+			std::cout << "    for(const auto &arg : command.arguments)\n";
+			std::cout << "    {\n";
+			std::cout << "        if(arg.has_default_value)\n";
+			std::cout << "        {\n";
+			std::cout << "            std::cout << std::format(\"    - {} {} = {}\\n\", type_to_cpp_type(arg.type), arg.name, value_to_string(arg.default_value));\n";
+			std::cout << "        }\n";
+			std::cout << "        else\n";
+			std::cout << "        {\n";
+			std::cout << "            std::cout << std::format(\"    - {} {}\\n\", type_to_cpp_type(arg.type), arg.name);\n";
+			std::cout << "        }\n";
+			std::cout << "    }\n";
+			std::cout << "\n";
+			std::cout << "    return 0;\n";
+			std::cout << "}\n";
+			std::cout << "\n";
+			std::cout << "// This is the command we want it to find!\n";
+			std::cout << "MY_COMMAND // I can even give it a comment to act as documentation!\n";
+			std::cout << "bool some_command(int i, float f, double d, std::string s = \"default_values_are_supported\", bool b = false)\n";
+			std::cout << "{\n";
+			std::cout << "    std::cout << std::format(\"Hello from 'some_command'! These were the arguments: i = {}, f = {}, d = {}, s = {}, b = {}\\n\", i, f, d, s, b);\n";
+			std::cout << "    std::cout << \"Returning if i == 5!\\n\";\n";
+			std::cout << "    return i == 5;\n";
+			std::cout << "}\n";
+			
 			std::cout << "\n";
 		}
 		return 0;
