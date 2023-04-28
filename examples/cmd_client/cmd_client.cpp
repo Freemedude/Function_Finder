@@ -10,6 +10,10 @@
 #include "other_console_commands_out.hpp"
 #include "cmd_client.hpp"
 
+const std::string WHERE_COMMAND = "where";
+const std::string HELP_COMMAND = "help";
+const std::string EXIT_COMMAND = "exit";
+
 bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {
 	size_t max_length = source.size();
@@ -37,104 +41,116 @@ bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_a
 	return true;
 }
 
+void print_unknown_command(std::string_view command_name)
+{
+	std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", command_name);
+}
+
+void run_help_command(std::string_view line, Function_Map &commands)
+{
+	if (line == HELP_COMMAND)
+	{
+		std::cout << "These are the commands:\n";
+		for (const auto &cmd : commands)
+		{
+			std::cout << " - " << cmd.first << "\n";
+		}
+
+		std::cout << "You can get more details about a command with 'help <command>' or 'where <command>'\n";
+		return;
+	}
+
+	// Getting here indicates there is more
+	std::string command_name(line.begin() + HELP_COMMAND.size(), line.end());
+
+	// For some reason .contains doesn't support string_view...
+	if (commands.contains(command_name))
+	{
+		auto cmd = commands[command_name];
+		std::cout << std::format("Command \"{}\" \n\tNote: %{}\n\tUsage: '{} ", cmd.name, cmd.note, cmd.name);
+
+		// These are the required arguments:
+		for (int i = 0; i < cmd.num_required_args; i++)
+		{
+			std::cout << std::format("<{} : {}>", cmd.arguments[i].name, type_to_readable_string(cmd.arguments[i].type));
+			if (i < cmd.num_required_args - 1)
+			{
+				std::cout << " ";
+			}
+		}
+
+		// If there are optional arguments, give it a space in between.
+		if (cmd.num_optional_args > 0)
+		{
+			std::cout << " ";
+		}
+
+		// Thesee are the optional arguments. They therefore include the default value.
+		for (int i = cmd.num_required_args; i < cmd.arguments.size(); i++)
+		{
+			std::cout << std::format("[{} : {} = {}]",
+				cmd.arguments[i].name, type_to_readable_string(cmd.arguments[i].type), value_to_string(cmd.arguments[i].default_value));
+
+			// Check if there are more arguments.
+			if (i < cmd.arguments.size() - 1)
+			{
+				std::cout << " ";
+			}
+		}
+
+		// Return type
+		std::cout << std::format(" -> {}'\n", type_to_readable_string(cmd.return_type));
+	}
+	else
+	{
+		print_unknown_command(command_name);
+	}
+}
+
 int main(int arg_c, const char **args)
 {
-	Command_Map trash;
-	Command_Map commands;
+	Function_Map commands;
 	init_console_commands(commands);
-	init_other_console_commands(trash);
 
 	std::string line;
 	while (true)
 	{
-		printf(">");
+		std::cout << ">";
 		auto more = (bool)std::getline(std::cin, line);
 		if (!more)
 		{
 			break;
 		}
 
-		if (line == "exit")
+		if (line == EXIT_COMMAND)
 		{
 			break;
 		}
 
-		if (line.starts_with("where"))
+		if (line.starts_with(WHERE_COMMAND))
 		{
-			if (line.size() + 1 == (sizeof("where")))
+			if (line.size() + 1 == WHERE_COMMAND.size())
 			{
-				printf("Type 'where <command>' to see where a command is implemented\n");
+				std::cout << "Type 'where <command>' to see where a command is implemented\n";
 				continue;
 			}
-			std::string view(line.begin() + sizeof("where"), line.end());
+			std::string view(line.begin() + WHERE_COMMAND.size(), line.end());
 
 			if (commands.contains(view))
 			{
 				auto cmd = commands[view];
-				printf("You can find command \"%s\" at %s : L%zu\n", view.data(), cmd.file.c_str(), cmd.line);
+				std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
 			}
 			else
 			{
-				printf("Unknown command \"%s\". Try \"help\" to get a list of commands.\n", view.data());
+				std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", view);
 			}
 			continue;
 		}
 
-		if (line.starts_with("help"))
+		if (line.starts_with(HELP_COMMAND))
 		{
-			if (line == "help")
-			{
-				printf("These are the commands:\n");
-				for (const auto &cmd : commands)
-				{
-					printf(" - %s\n", cmd.first.c_str());
-				}
-
-				printf("You can get more details about a command with 'help <command>' or 'where <command>'\n");
-				continue;
-			}
-
-			// Getting here indicates there more
-			std::string view(line.begin() + sizeof("help"), line.end());
-
-			if (commands.contains(view))
-			{
-				auto cmd = commands[view];
-				printf("Command \"%s\" \n\tNote: %s\n\tUsage: '%s ", cmd.name.c_str(), cmd.note.c_str(), cmd.name.c_str());
-				for (int i = 0; i < cmd.num_required_args; i++)
-				{
-					printf("<%s : %s>", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
-					if (i < cmd.num_required_args - 1)
-					{
-						printf(" ");
-					}
-				}
-
-				if (cmd.arguments.size() > cmd.num_required_args)
-				{
-					printf(" ");
-				}
-
-				for (int i = cmd.num_required_args; i < cmd.arguments.size(); i++)
-				{
-					printf("[%s : %s = ", cmd.arguments[i].name.c_str(), type_to_readable_string(cmd.arguments[i].type).c_str());
-
-					output_value_to_stream(std::cout, cmd.arguments[i].default_value);
-
-					printf("]");
-
-					if (i < cmd.arguments.size() - 1)
-					{
-						printf(" ");
-					}
-				}
-
-				printf(" -> %s'\n", type_to_readable_string(cmd.return_type).c_str());
-			}
-			else
-			{
-				printf("Unknown command \"%s\". Try \"help\" to get a list of commands.\n", view.data());
-			}
+			run_help_command(line, commands);
 			continue;
 		}
 
@@ -142,13 +158,14 @@ int main(int arg_c, const char **args)
 		bool success = string_to_arg_list(line.c_str(), args);
 		if (!success)
 		{
-			printf("Failed to parse inputs, try again\n");
+			std::cout << "Failed to parse inputs, try again\n";
 			continue;
 		}
 
 		if (args.size() == 0)
 		{
-			printf("Write something, idiot\n");
+			std::cout << "Write the name of a command followed by the arguments to run the command!\n";
+			std::cout << "Try writing 'help' to get a list of commands!";
 			continue;
 		}
 
@@ -166,13 +183,13 @@ int main(int arg_c, const char **args)
 
 			if (v.type != Value_Type::VOID)
 			{
-				output_value_to_stream(std::cout, v);
+				std::cout << value_to_string(v);
 			}
-			printf("\n");
+			std::cout << "\n";
 		}
 		else
 		{
-			printf("Unknown command \"%s\". Try \"help\" to get a list of commands.\n", function_name.c_str());
+			print_unknown_command(function_name);
 		}
 	}
 

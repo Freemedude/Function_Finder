@@ -4,6 +4,8 @@ TODO:
  * Cleanup
  * Modernization
  * Ask Chat-GPT for feedback
- * Seems volatile to the autoformatter result on client.cpp. INVESTIGATE!
- * Consider a smarter line-writer solution. Current solution is very ugly.
  * Blog
+ * Consistent file/stream writer look and feel. Very inconsistent and ugly.
+ * Add verbosity options!
+ * Bugs:
+    * 

@@ -9,9 +9,21 @@
 #include <functional>
 #include <string_view>
 #include <regex>
+#include <chrono>
 #include <algorithm>
 
 #include "function_finder/function_finder.hpp"
+
+const std::vector<std::string> ACCEPTED_EXTENSIONS = {
+	".cpp", ".hpp", ".h", ".c", ".cxx" };
+
+struct Settings
+{
+	std::filesystem::path source;
+	std::filesystem::path destination;
+	std::string search_term;
+	std::string init_function_name;
+};
 
 size_t get_type(std::string_view source, Value_Type &out_type)
 {
@@ -21,7 +33,7 @@ size_t get_type(std::string_view source, Value_Type &out_type)
 	size_t length = get_symbol(source, str);
 	if (!length)
 	{
-		printf("Failed to get type string from '%s'", source.data());
+		std::cout << "Failed to get type string from '" << source << "'\n";
 		out_type = Value_Type::UNKNOWN;
 		return 0;
 	}
@@ -71,7 +83,7 @@ size_t get_argument(std::string_view source, Argument &out_arg)
 	size_t length = get_symbol(source, name);
 	if (!length)
 	{
-		printf("Failed to get argument name at position '%s'\n", source.data());
+		std::cout << std::format("Failed to get argument name at position '{}'\n", source.data());
 		return 0;
 	}
 
@@ -170,7 +182,7 @@ size_t get_argument(std::string_view source, Argument &out_arg)
 			}
 			else
 			{
-				printf("Failed to get string default value %s\n", source.data());
+				std::cout << "Failed to get string default value %s" << source.data() << "\n";
 				return 0;
 			}
 			break;
@@ -259,7 +271,7 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 		{
 			// Find the end of the comment.
 			auto comment_end = source.find("*/");
-			if(comment_end == std::string_view::npos)
+			if (comment_end == std::string_view::npos)
 			{
 				// There is no end to this block comment. It will consume us all.
 				return 0;
@@ -268,7 +280,7 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 			std::string_view note_view(source.begin() + 2, source.begin() + comment_end);
 			note_view = skip_whitespace(note_view);
 			out_function->note = std::string(note_view.begin(), note_view.end());
-			
+
 			// Sanitize.
 			out_function->note = std::regex_replace(out_function->note, std::regex("\n"), "\\n");
 			source = advance(source, comment_end + 2); // +2 to skip the '*/' bit
@@ -289,7 +301,7 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 	size_t length = get_symbol(source, out_function->name);
 	if (!length)
 	{
-		printf("Failed to get function name '%s'\n", source.data());
+		std::cerr << "[ERROR] Failed to get function name '" << source << "'\n";
 		return false;
 	}
 
@@ -299,7 +311,7 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 	bool success = get_arguments(source, out_function->arguments);
 	if (!success)
 	{
-		printf("Failed to get arguments for function '%s'\n", out_function->name.c_str());
+		std::cerr << "[ERROR] Failed to get arguments for function '" << out_function->name << "'\n";
 		return false;
 	}
 
@@ -348,13 +360,13 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 	return final_length;
 }
 
-bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_commands, std::string_view search_term)
+bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_functions, std::string_view search_term)
 {
 	// Gather declarations
 	std::ifstream file(path);
 	if (!file.is_open())
 	{
-		printf("Couldn't find source file '%ws'!\n", path.c_str());
+		std::cerr << "[ERROR] Couldn't find source file '" << path << "'! Terminating." << std::endl;
 		return false;
 	}
 
@@ -392,52 +404,138 @@ bool parse_file(const std::filesystem::path &path, std::vector<Function_Decl> &i
 			func_view = skip_whitespace(func_view);
 
 			try_parse_function(func_view, &func);
-			inout_commands.push_back(func);
+			inout_functions.push_back(func);
 		}
 	}
 
 	return true;
 }
 
-bool write_output_file(const std::filesystem::path &path, std::vector<Function_Decl> &commands, std::string_view init_function_name)
+class Cpp_File_Writer
 {
-	std::ofstream file(path);
+	int current_indent = 0;
+
+	public:
+	const int tab_size = 4;
+	std::ostream &stream;
+
+	explicit Cpp_File_Writer(std::ostream &stream)
+		:stream(stream)
+	{
+	}
+
+	template <typename T>
+	std::ostream &operator<<(T const &obj)
+	{
+		for (int i = 0; i < current_indent * tab_size; i++)
+		{
+			stream << ' ';
+		}
+
+		stream << obj;
+
+		stream << std::endl;
+		return stream;
+	}
+
+	void indent()
+	{
+		current_indent++;
+
+	}
+
+	void unindent()
+	{
+		current_indent--;
+
+	}
+
+	void skip_line()
+	{
+		stream << std::endl;
+	}
+
+	std::ostream &get_stream()
+	{
+		for (int i = 0; i < current_indent * tab_size; i++)
+		{
+			stream << ' ';
+		}
+
+		return stream;
+
+	}
+};
+
+std::string function_call_string(const Function_Decl &func)
+{
+	std::stringstream ss;
+	ss << func.name << "(";
+	for (int i = 0; i < func.arguments.size(); i++)
+	{
+		const Argument &arg = func.arguments[i];
+		ss << "arg_" << arg.name;
+
+		if (i < func.arguments.size() - 1)
+		{
+			ss << ", ";
+		}
+	}
+	ss << ")";
+	return ss.str();
+}
+
+bool export_functions(const Settings &settings, std::vector<Function_Decl> &functions)
+{
+	std::filesystem::create_directories(settings.destination.parent_path());
+
+	std::ofstream file(settings.destination);
+
 	if (!file.is_open())
 	{
-		printf("Couldn't create destination file '%ws'!\n", path.c_str());
+		std::cerr << "[ERROR] Could not create destination file at '" << settings.destination.generic_string() << "'! Terminating." << std::endl;
 		return false;
 	}
 
+	Cpp_File_Writer w(file);
+
 	// Header
-#pragma region Predecls
-	file << "// This file is auto-generated. Don't edit!" << std::endl
-		<< std::endl;
-	file << "#pragma once" << std::endl
-		<< std::endl;
+	w << "// The contents of this file are auto-generated.";
+	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	w << std::format("// This file was generated {}", std::ctime(&now));
+	w << "// Generation options:";
+	w << std::format("//   Input path: {}", settings.source.generic_string());
+	w << std::format("//   Output path: {}", settings.destination.generic_string());
+	w << std::format("//   Search pattern: {}", settings.search_term);
+	w << std::format("//   Initialization function name: {}", settings.init_function_name);
+	w << "#pragma once";
+	w.skip_line();
 
-#pragma region Includes
 	// Includes
-	file << "// Includes:\n";
-	file << "#include <unordered_map>\n";
-	file << "#include <string>\n";
-	file << "#include \"function_finder/function_finder.hpp\"\n";
-	file << std::endl
-		<< std::endl;
+	w << "// Includes:";
+	w << "#include <unordered_map>";
+	w << "#include <string>";
+	w << R"(#include "function_finder/function_finder.hpp")";
+	w.skip_line();
 
-	file << std::endl;
-#pragma endregion
-
-	// Pre-definitions
 #pragma region Predecls
+	// Pre-declarations
 
-	file << "// Pre-definitions:\n";
-	for (const auto &cmd : commands)
+	w << "//////////////////////////////";
+	w << "//     PRE-DECLARATIONS     //";
+	w << "//////////////////////////////";
+
+	w << "// Pre-declarations";
+	w << "// Default values are ommitted because it: 1) wont compile with them defined twice; 2) they are handled by the generated wrappers below.";
+	w.skip_line();
+	for (const auto &cmd : functions)
 	{
-		file << type_to_cpp_type(cmd.return_type) << " " << cmd.name << "(";
+		w << std::format("// From \"{}\" L{}", cmd.file, cmd.line);
+		auto &s = w.get_stream() << type_to_cpp_type(cmd.return_type) << " " << cmd.name << "(";
 		for (int i = 0; i < cmd.arguments.size(); i++)
 		{
 			const Argument &arg = cmd.arguments[i];
-			file << type_to_cpp_type(arg.type) << " " << arg.name;
+			s << type_to_cpp_type(arg.type) << " " << arg.name;
 
 			// NOTE:
 			//   We intentionally leave out the default value here. Since the compiler will complain
@@ -445,38 +543,53 @@ bool write_output_file(const std::filesystem::path &path, std::vector<Function_D
 			//   command_* functions placed below.                              @Daniel 10/04/2023
 			if (i != cmd.arguments.size() - 1)
 			{
-				file << ", ";
+				s << ", ";
 			}
 		}
-		file << ");\n";
+		s << ");" << std::endl;
+		w.skip_line();
+
 	}
-	file << std::endl;
 #pragma endregion
 
 #pragma region wrappers
 
+	w << "//////////////////////////////";
+	w << "//         WRAPPERS         //";
+	w << "//////////////////////////////";
+	w.skip_line();
+
 	// Write the command_* wrapper functions
-	for (const auto &cmd : commands)
+	for (const auto &cmd : functions)
 	{
 		// Function definition
-		file << "// Generated based on function \"" << cmd.name << "\" from file \"" << cmd.file << "\" line " << cmd.line << "\n";
-		file << "inline bool command_" << cmd.name << "(std::vector<std::string> &args, Value &out_result)\n";
-		file << "{\n";
+		w << std::format("// Generated based on function \"{}\" from file \"{}\" L{}", cmd.name, cmd.file, cmd.line);
+		w << std::format("inline bool command_{}(std::vector<std::string> &args, Value &out_result)", cmd.name);
+		w << "{";
+		w.indent();
 
 		// Confirm number of arguments
 		if (cmd.num_required_args)
 		{
-			file << "    if(args.size() < " << cmd.num_required_args << ")\n";
-			file << "    {\n";
-			file << "        printf(\"Not enough arguments for '" << cmd.name << "'. Needed " << cmd.num_required_args << ", but got %zu\\n\", args.size());\n";
-			file << "        return false;\n";
-			file << "    }\n\n";
+			w << "// Check that all required arguments are provided.";
+			w << std::format("if(args.size() < {})", cmd.num_required_args);
+			w << "{";
+			w.indent();
+
+			w << std::format("printf(\"Not enough arguments for '{}'. Needed {}, but got %zu\\n\", args.size());", cmd.name, cmd.num_required_args);
+			w << "return false;";
+
+			w.unindent();
+			w << "}";
+			w.skip_line();
 		}
 
 		// Reused success flag for value parsing.
 		if (cmd.arguments.size() > 0)
 		{
-			file << "    int success;\n\n";
+			w << "// Reused success flag used for value parsing";
+			w << "int success = false;";
+			w.skip_line();
 		}
 
 		// Add parsing and fetching to each argument.
@@ -484,240 +597,196 @@ bool write_output_file(const std::filesystem::path &path, std::vector<Function_D
 		{
 			const Argument &arg = cmd.arguments[i];
 
-			// Header comment
-			file << "    // Arg " << i << " '" << arg.name << "' with ";
-			if (!arg.has_default_value)
-			{
-				file << "no default\n";
-			}
-			else
-			{
-				file << "default value ";
-				output_value_to_stream(file, arg.default_value);
-				file << "\n";
-			}
+			// Create variable
+			w << std::format("// {} argument {}: '{} {}'", arg.has_default_value ? "Optional" : "Required", i, type_to_cpp_type(arg.type), arg.name);
+			w << std::format("{} arg_{};", type_to_cpp_type(arg.type), arg.name);
 
-			// Create the resulting variable
-			file << "    " << type_to_cpp_type(arg.type) << " arg_" << arg.name;
 			if (arg.has_default_value)
 			{
-				file << " = ";
-				output_value_to_stream(file, arg.default_value);
-			}
-			file << ";\n";
-
-			// If there's a default value, check if the value has been given. If it is given, parse it.
-			if (arg.has_default_value)
-			{
-				file << "    if(args.size() > " << i << ")\n";
-				file << "    {\n";
+				// Check if replacement variable has been provided
+				w << std::format("if(args.size() > {})", i);
+				w << "{";
+				w.indent();
 
 				// If it's a string, then we don't need parsing.
 				if (arg.type == Value_Type::STRING)
 				{
-					file << "        success = true;\n";
-					file << "        arg_" << arg.name << " = args[" << i << "];\n";
+					w << "success = true;";
+					w << std::format("arg_{} = args[{}];", arg.name, i);
 				}
-				else
-				{
-					file << "        success = get_" << type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
-				}
-				file << "        if(!success)\n";
-				file << "        {\n";
-				file << "            printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
-				file << "            return false;\n";
-				file << "        }\n";
-				file << "    }\n";
 			}
 			else
 			{
 				if (arg.type == Value_Type::STRING)
 				{
-					file << "    success = true;\n";
-					file << "    arg_" << arg.name << " = args[" << i << "];\n";
+					w << "success = true;";
+					w << std::format("arg_{} = args[{}];", arg.name, i);
 				}
-				else
-				{
-					file << "    success = get_" << type_to_readable_string(arg.type) << "(args[" << i << "], arg_" << arg.name << ");\n";
-				}
-				file << "    if(!success)\n";
-				file << "    {\n";
-				file << "        printf(\"Failed to parse argument '" << arg.name << "' at index " << i << ". Expected " << type_to_cpp_type(arg.type) << " but got string '%s'\\n\", args[" << i << "].c_str());\n";
-				file << "        return false;\n";
-				file << "    }\n";
-				file << "\n";
 			}
+
+			w << std::format("success = get_{}(args[{}], arg_{});", type_to_readable_string(arg.type), i, arg.name);
+			w << "if(!success)";
+			w << "{";
+			w.indent();
+
+			w << std::format("printf(\"Failed to parse argument {0} '{1}'. Attempted to parse a {2}, but got string '%s'\\n\", args[{0}].c_str());", i, arg.name, type_to_cpp_type(arg.type));
+			w << "return 0;";
+
+			w.unindent();
+			w << "}";
+
+			if (arg.has_default_value)
+			{
+				w.unindent();
+				w << "}";
+			}
+			w.skip_line();
 		}
-		file << "    out_result.type = " << type_to_string(cmd.return_type) << ";\n";
+		w << std::format("out_result.type = {};", type_to_string(cmd.return_type));
 
 		if (cmd.return_type == Value_Type::VOID)
 		{
 			// This function call code is copy pasted 3 times, time to func it.
-			file << "    " << cmd.name << "(";
-			for (int i = 0; i < cmd.arguments.size(); i++)
-			{
-				const Argument &arg = cmd.arguments[i];
-				file << "arg_" << arg.name;
+			w << std::format("{};", function_call_string(cmd));
 
-				if (i < cmd.arguments.size() - 1)
-				{
-					file << ", ";
-				}
-			}
-			file << ");\n\n";
 		}
 		else if (cmd.return_type == Value_Type::STRING)
 		{
-
-			file << "    std::string result = " << cmd.name << "(";
-			for (int i = 0; i < cmd.arguments.size(); i++)
-			{
-				const Argument &arg = cmd.arguments[i];
-				file << "arg_" << arg.name;
-
-				if (i < cmd.arguments.size() - 1)
-				{
-					file << ", ";
-				}
-			}
-			file << ");\n";
-			file << "    strncpy(out_result.data.string_value, result.data(), sizeof(out_result.data.string_value));\n\n";
+			w << std::format("std::string result = {};", function_call_string(cmd));
+			w << "strncpy(out_result.data.string_value, result.data(), sizeof(out_result.data.string_value));";
 		}
 		else
 		{
-			file << "    out_result.data." << type_to_readable_string(cmd.return_type) << "_value = " << cmd.name << "(";
-			for (int i = 0; i < cmd.arguments.size(); i++)
-			{
-				const Argument &arg = cmd.arguments[i];
-				file << "arg_" << arg.name;
-
-				if (i < cmd.arguments.size() - 1)
-				{
-					file << ", ";
-				}
-			}
-			file << ");\n\n";
+			w << std::format("out_result.data.{}_value = {};", type_to_readable_string(cmd.return_type), function_call_string(cmd));
 		}
+		w.skip_line();
 
-		file << "    return true;\n";
-		file << "}\n\n";
+		w << "return true;";
+
+		w.unindent();
+		w << "}";
+		w.skip_line();
 	}
 
 #pragma endregion
 
 	// Write the initialization function
-	file << "// Consumer:" << std::endl;
-	file << "void " << init_function_name << "(Command_Map &out_commands)\n";
-	file << "{\n";
-	for (const auto &cmd : commands)
+
+	w << "//////////////////////////////";
+	w << "//       INITIALIZER        //";
+	w << "//////////////////////////////";
+	w.skip_line();
+
+	w << std::format("void {}(Command_Map &out_commands)", settings.init_function_name);
+	w << "{";
+	w.indent();
+
+	for (const auto &cmd : functions)
 	{
-		file << "    out_commands[\"" << cmd.name << "\"] = Function_Decl(";
-		file << "\"" << cmd.file << "\", (size_t)" << cmd.line << ", "
-			<< "&command_" << cmd.name << ", "
-			<< "\"" << cmd.name << "\", " << type_to_string(cmd.return_type) << ",\n";
-		file << "        // Arguments\n";
-		file << "        {\n";
+		w << std::format("out_commands[\"{0}\"] = Function_Decl(\"{0}\", command_{0}, {1}, {2}, {3},",
+			cmd.name, type_to_string(cmd.return_type), (int)cmd.num_required_args, (int)cmd.num_optional_args);
+		w.indent();
+		w << std::format("\"{}\", (size_t){},", cmd.file, cmd.line);
+		w << "// Arguments";
+		w << "{";
+		w.indent();
 		for (size_t i = 0; i < cmd.arguments.size(); i++)
 		{
 			const auto &arg = cmd.arguments[i];
-			file << "            Argument(";
+			bool last_iter = i == cmd.arguments.size() - 1;
 
-			file << "\"" << arg.name << "\", ";
-			file << type_to_string(arg.type);
 			if (arg.has_default_value)
 			{
-				file << ", ";
-				if (arg.default_value.type != Value_Type::STRING)
-				{
-					file << "(" << type_to_cpp_type(arg.default_value.type) << ")";
-				}
-				output_value_to_stream(file, arg.default_value);
+				w << std::format("Argument(\"{}\", {}, {}){}",
+					arg.name, type_to_string(arg.type), value_to_string(arg.default_value), last_iter ? "" : ",");
 			}
-
-			file << ")";
-			if (i != cmd.arguments.size() - 1)
+			else
 			{
-				file << ",";
+				w << std::format("Argument(\"{}\", {}){}",
+					arg.name, type_to_string(arg.type), last_iter ? "" : ",");
 			}
-			file << "\n";
 		}
-		file << "        },\n";
-		file << "        " << (int)cmd.num_required_args << ",\n";
-		file << "        " << (int)cmd.num_optional_args << ",\n";
-		file << "        \"" << cmd.note << "\"\n";
-		file << "    );\n";
+		w.unindent();
+		w << "},";
+		w << std::format("\"{}\"", cmd.note);
+		w.unindent();
+		w << ");";
+		w.skip_line();
 	}
-	file << "\n";
-	file << "}" << std::endl;
+
+	w.unindent();
+	w << "}";
+	w.skip_line();
 
 	file.close();
 	return true;
 }
 
+
+
+bool import_functions(const std::filesystem::path &path, std::vector<Function_Decl> &functions, Settings &settings)
+{
+	std::function<void(const std::filesystem::path &path)> parse_directory;
+	parse_directory = [&](const std::filesystem::path &path)
+	{
+		for (const auto &ele : std::filesystem::directory_iterator(path))
+		{
+			if (ele.is_regular_file())
+			{
+				if (std::any_of(ACCEPTED_EXTENSIONS.begin(), ACCEPTED_EXTENSIONS.end(), [&](const std::string &ex)
+					{ return ele.path().extension() == ex; }))
+				{
+					std::cout << std::format("  - {}", ele.path().generic_string()) << std::endl;
+					parse_file(ele.path(), functions, settings.search_term);
+				}
+			}
+			else if (ele.is_directory())
+			{
+				parse_directory(ele.path());
+			}
+		}
+	};
+
+	std::cout << std::format("Scanning for functions in '{}' and exporting into '{}'\n", settings.source.generic_string(), settings.destination.generic_string());
+	if (std::filesystem::is_regular_file(settings.source))
+	{
+		parse_file(settings.source, functions, settings.search_term);
+	}
+	else if (std::filesystem::is_directory(settings.source))
+	{
+		// It's a directory
+		parse_directory(settings.source);
+	}
+	else
+	{
+		std::cerr << "[ERROR] Source is neither a file nor directory... What did you feed me?";
+	}
+
+	return true;
+}
+
+// Usage:
+//   function_finder.exe <source : file/directory> <destination : file> <search_term : one word string> <init_function_name : one word string>
+// Example
+//   function_finder.exe cmd_client.cpp output.hpp CONSOLE_COMMAND init_console_commands
 int main(int arg_count, const char **args)
 {
 	if (arg_count != 5)
 	{
-		printf("Needs a input path, output path, search_term, and init_function name as arguments.\n");
+		std::cerr << "[ERROR] Needs a input path, output path, search_term, and init_function name as arguments. Terminating.\n";
 		return 1;
 	}
-	const char *src = args[1];
-	const char *dst = args[2];
-	const char *search_term = args[3];
-	const char *init_function_name = args[4];
-	// Usage is then "function_finder.exe my/input/folder/or/file.cpp my/output.hpp CONSOLE_COMMAND init_console_commands"
 
-	std::filesystem::path src_path = args[1];
-	std::filesystem::path dst_path = args[2];
+	Settings settings;
+	settings.source = args[1];
+	settings.destination = args[2];
+	settings.search_term = args[3];
+	settings.init_function_name = args[4];
 
-	if (!dst_path.has_extension())
-	{
-		printf("Dst must be a file!\n");
-		return 2;
-	}
+	// Import function declarations
+	std::vector<Function_Decl> functions;
 
+	import_functions(settings.source, functions, settings);
+	export_functions(settings, functions);
 
-	std::filesystem::create_directories(dst_path.parent_path());
-
-	std::vector<Function_Decl> commands;
-	if (std::filesystem::is_regular_file(src))
-	{
-		printf("Preprocessing '%s' into '%s'\n", src, dst);
-		parse_file(src, commands, search_term);
-	}
-	else
-	{
-		// It's a directory
-		const std::vector<std::string> accepted_extensions = {
-			".cpp", ".hpp", ".h", ".c", ".cxx" };
-
-		std::function<void(const std::filesystem::path &path)> scan_directory;
-
-		scan_directory = [&](const std::filesystem::path &path)
-		{
-			for (const auto &ele : std::filesystem::directory_iterator(path))
-			{
-				if (ele.is_regular_file())
-				{
-					if (std::any_of(accepted_extensions.begin(), accepted_extensions.end(), [&](const std::string &ex)
-						{ return ele.path().extension() == ex; }))
-					{
-						parse_file(ele.path(), commands, search_term);
-					}
-				}
-				else if (ele.is_directory())
-				{
-					scan_directory(ele.path());
-				}
-				else
-				{
-					printf("Dunno what '%s' is...\n", (char *)ele.path().c_str());
-				}
-			}
-		};
-
-		scan_directory(src);
-	}
-
-	write_output_file(dst, commands, init_function_name);
 }
