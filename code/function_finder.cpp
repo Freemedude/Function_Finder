@@ -14,6 +14,8 @@
 
 #include "function_finder/function_finder.hpp"
 
+const int VERSION = 0;
+
 const std::vector<std::string> ACCEPTED_EXTENSIONS = {
 	".cpp", ".hpp", ".h", ".c", ".cxx" };
 
@@ -771,6 +773,47 @@ bool import_functions(const std::filesystem::path &path, std::vector<Function_De
 //   function_finder.exe cmd_client.cpp output.hpp CONSOLE_COMMAND init_console_commands
 int main(int arg_count, const char **args)
 {
+	if (arg_count == 0)
+	{
+		std::cerr << "[ERROR] Invalid input. see '--help'\n";
+	}
+
+	if (arg_count == 2)
+	{
+		std::string_view arg_1 = args[1];
+		if (arg_1 == "--help")
+		{
+			std::cout << "Function Finder (V" << VERSION << ")\n";
+			std::cout << "The purpose of this tool is to allow easy pre-processing of source files to extract functions to use as commands for terminals, consoles, games, etc. ";
+			std::cout << "It scans your file/directory for function prefixed by your search-term and outputs a header-file containing wrappers, function argument information, and more.\n";
+			std::cout << "\n";
+			std::cout << "Usage:\n";
+			std::cout << "    'function_finder.exe --help'\n";
+			std::cout << "        Help message on how to use Function Finder\n";
+			std::cout << "\n";
+			std::cout << "    'function_finder.exe <input_path> <output_path> <search_term> <init_function_name>'\n";
+			std::cout << "        Run the tool.\n";
+			std::cout << "\n";
+			std::cout << "        input_path:\n";
+			std::cout << "            The file or folder you want to scan for functions. If scanning directories run 'function_finder --extensions' to \n";
+			std::cout << "            see which file endings are included.\n";
+			std::cout << "        output_path:\n";
+			std::cout << "            The file you want to export to. This is presumed to be a header-file, so give it an extension accordingly (.hpp or .h).\n";
+			std::cout << "        search_term:\n";
+			std::cout << "            The term to search for. Should be a single word string using underscores. The idea here is to have a '#define' in the \n";
+			std::cout << "            input code that you put before the functions you want to find. See 'function_finder.exe --example' for an example of client code.\n";
+			std::cout << "        init_function_name:\n";
+			std::cout << "            What to name the Function Finder initialization function. If the idea is to use these functions as console-commands\n";
+			std::cout << "            you can name it something like 'init_console_commands'.\n";
+			std::cout << "\n";
+			std::cout << "    'function_finder.exe --extensions'\n";
+			std::cout << "        Get a list of file-extensions that are included when scanning directories.\n";
+			std::cout << "    'function_finder.exe --example'\n";
+			std::cout << "        Get a full example use case of this tool\n";
+		}
+		return 0;
+	}
+
 	if (arg_count != 5)
 	{
 		std::cerr << "[ERROR] Needs a input path, output path, search_term, and init_function name as arguments. Terminating.\n";
