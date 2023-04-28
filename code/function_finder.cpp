@@ -808,8 +808,23 @@ int main(int arg_count, const char **args)
 			std::cout << "\n";
 			std::cout << "    'function_finder.exe --extensions'\n";
 			std::cout << "        Get a list of file-extensions that are included when scanning directories.\n";
+			std::cout << "\n";
 			std::cout << "    'function_finder.exe --example'\n";
 			std::cout << "        Get a full example use case of this tool\n";
+		}
+		if (arg_1 == "--extensions")
+		{
+			std::cout << "When scanning directories, the following extensions are included in the search. There is currently no way of adding to this.\n";
+			std::cout << "  - ";
+			for (auto ext = ACCEPTED_EXTENSIONS.begin(); ext != ACCEPTED_EXTENSIONS.end(); ++ext)
+			{
+				std::cout << "'" << *ext << "'";
+				if(ext != std::prev(ACCEPTED_EXTENSIONS.end()))
+				{
+					std::cout << ", ";
+				}
+			}
+			std::cout << "\n";
 		}
 		return 0;
 	}
