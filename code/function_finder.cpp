@@ -321,44 +321,6 @@ size_t try_parse_function(std::string_view source, Function_Decl *out_function)
 		{ return arg.has_default_value; });
 	out_function->num_required_args = out_function->arguments.size() - out_function->num_optional_args;
 
-#if 0
-	std::cout << "Parsed function '" << out_function->name << "'" << std::endl;
-	std::cout << "  Returns type " << (int)out_function->return_type << std::endl;
-	std::cout << "  Args [" << out_function->arguments.size() << "]" << std::endl;
-
-	for (const auto &arg : out_function->arguments)
-	{
-		std::cout << "    Name: " << arg.name << " - Type: " << (int)arg.type;
-
-		if (arg.has_default_value)
-		{
-			std::cout << " - Default: ";
-
-			const int *int_value = std::get_if<int>(&arg.default_value);
-			if (int_value)
-			{
-				std::cout << *int_value;
-			}
-			const double *double_value = std::get_if<double>(&arg.default_value);
-			if (double_value)
-			{
-				std::cout << *double_value;
-			}
-			const bool *bool_value = std::get_if<bool>(&arg.default_value);
-			if (bool_value)
-			{
-				std::cout << *bool_value;
-			}
-			const std::string *string_value = std::get_if<std::string>(&arg.default_value);
-			if (string_value)
-			{
-				std::cout << *string_value;
-			}
-		}
-
-		std::cout << std::endl;
-	}
-#endif
 	return final_length;
 }
 
