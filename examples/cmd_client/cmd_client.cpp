@@ -9,36 +9,104 @@
 #include "console_commands_out.hpp"
 #include "cmd_client.hpp"
 
+bool convert_string_to_arg_list(std::string_view source, std::vector<std::string> &out_args);
+void run_help_command(std::string_view line, Function_Map &commands);
+void print_unknown_command(std::string_view command_name);
+
 const std::string WHERE_COMMAND = "where";
 const std::string HELP_COMMAND = "help";
 const std::string EXIT_COMMAND = "exit";
 
-bool string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
+int main(int arg_c, const char **args)
 {
-	size_t max_length = source.size();
-	size_t length = 0;
+	Function_Map commands;
+	init_console_commands(commands);
 
-	while (length < max_length && source[length] != 0)
+	std::string line;
+	while (true)
 	{
-		auto current = advance(source, length);
-		auto after_whitespace = skip_whitespace(current);
-		length += current.size() - after_whitespace.size();
-		current = after_whitespace;
-		std::string word;
-		size_t count = get_string(current, word);
-		if (!count)
+		std::cout << ">";
+		auto more = (bool)std::getline(std::cin, line);
+		if (!more)
 		{
-			// The string ended in whitespace.
-			return false;
+			break;
 		}
-		auto after_word = advance(current, count);
-		length += current.size() - after_word.size();
 
-		out_args.push_back(word);
+		if (line == EXIT_COMMAND)
+		{
+			break;
+		}
+
+		if (line.starts_with(WHERE_COMMAND))
+		{
+			if (line.size() + 1 == WHERE_COMMAND.size())
+			{
+				std::cout << "Type 'where <command>' to see where a command is implemented\n";
+				continue;
+			}
+			
+			std::string view(line.begin() + WHERE_COMMAND.size() + 1, line.end());
+
+			if (commands.contains(view))
+			{
+				auto cmd = commands[view];
+				std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
+			}
+			else
+			{
+				std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", view);
+			}
+			continue;
+		}
+
+		if (line.starts_with(HELP_COMMAND))
+		{
+			run_help_command(line, commands);
+			continue;
+		}
+
+		std::vector<std::string> args;
+		bool success = convert_string_to_arg_list(line.c_str(), args);
+		if (!success)
+		{
+			std::cout << "Failed to parse inputs, try again\n";
+			continue;
+		}
+
+		if (args.size() == 0)
+		{
+			std::cout << "Write the name of a command followed by the arguments to run the command!\n";
+			std::cout << "Try writing 'help' to get a list of commands!";
+			continue;
+		}
+
+		std::string function_name = args[0];
+		args.erase(args.begin(), args.begin() + 1);
+
+		if (commands.contains(function_name))
+		{
+			Value v;
+			bool success = commands[function_name].function(args, v);
+			if (!success)
+			{
+				continue;
+			}
+
+			if (v.type != Value_Type::VOID)
+			{
+				std::cout << value_to_string(v);
+			    std::cout << "\n";
+			}
+		}
+		else
+		{
+			print_unknown_command(function_name);
+		}
 	}
 
-	return true;
+	return 0;
 }
+
 
 void print_unknown_command(std::string_view command_name)
 {
@@ -60,13 +128,13 @@ void run_help_command(std::string_view line, Function_Map &commands)
 	}
 
 	// Getting here indicates there is more
-	std::string command_name(line.begin() + HELP_COMMAND.size(), line.end());
+	std::string command_name(line.begin() + HELP_COMMAND.size() + 1, line.end());
 
 	// For some reason .contains doesn't support string_view...
 	if (commands.contains(command_name))
 	{
 		auto cmd = commands[command_name];
-		std::cout << std::format("Command \"{}\" \n\tNote: %{}\n\tUsage: '{} ", cmd.name, cmd.note, cmd.name);
+		std::cout << std::format("Command \"{}\" \n\tNote: {}\n\tUsage: '{} ", cmd.name, cmd.note, cmd.name);
 
 		// These are the required arguments:
 		for (int i = 0; i < cmd.num_required_args; i++)
@@ -106,94 +174,34 @@ void run_help_command(std::string_view line, Function_Map &commands)
 	}
 }
 
-int main(int arg_c, const char **args)
+
+bool convert_string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {
-	Function_Map commands;
-	init_console_commands(commands);
+	size_t max_length = source.size();
+	size_t length = 0;
 
-	std::string line;
-	while (true)
+	while (length < max_length && source[length] != 0)
 	{
-		std::cout << ">";
-		auto more = (bool)std::getline(std::cin, line);
-		if (!more)
+		auto current = advance(source, length);
+		auto after_whitespace = skip_whitespace(current);
+		length += current.size() - after_whitespace.size();
+		current = after_whitespace;
+		std::string word;
+		size_t count = get_string(current, word);
+		if (!count)
 		{
-			break;
+			// The string ended in whitespace.
+			return false;
 		}
+		auto after_word = advance(current, count);
+		length += count;
 
-		if (line == EXIT_COMMAND)
-		{
-			break;
-		}
-
-		if (line.starts_with(WHERE_COMMAND))
-		{
-			if (line.size() + 1 == WHERE_COMMAND.size())
-			{
-				std::cout << "Type 'where <command>' to see where a command is implemented\n";
-				continue;
-			}
-			std::string view(line.begin() + WHERE_COMMAND.size(), line.end());
-
-			if (commands.contains(view))
-			{
-				auto cmd = commands[view];
-				std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
-			}
-			else
-			{
-				std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", view);
-			}
-			continue;
-		}
-
-		if (line.starts_with(HELP_COMMAND))
-		{
-			run_help_command(line, commands);
-			continue;
-		}
-
-		std::vector<std::string> args;
-		bool success = string_to_arg_list(line.c_str(), args);
-		if (!success)
-		{
-			std::cout << "Failed to parse inputs, try again\n";
-			continue;
-		}
-
-		if (args.size() == 0)
-		{
-			std::cout << "Write the name of a command followed by the arguments to run the command!\n";
-			std::cout << "Try writing 'help' to get a list of commands!";
-			continue;
-		}
-
-		std::string function_name = args[0];
-		args.erase(args.begin(), args.begin() + 1);
-
-		if (commands.contains(function_name))
-		{
-			Value v;
-			bool success = commands[function_name].function(args, v);
-			if (!success)
-			{
-				continue;
-			}
-
-			if (v.type != Value_Type::VOID)
-			{
-				std::cout << value_to_string(v);
-			}
-			std::cout << "\n";
-		}
-		else
-		{
-			print_unknown_command(function_name);
-		}
+		out_args.push_back(word);
 	}
 
-	return 0;
+	return true;
 }
+
 
 CONSOLE_COMMAND
 /* Hello there. This function adds two numbers. a, and b.
