@@ -9,8 +9,12 @@
 #include "console_commands_out.hpp"
 #include "cmd_client.hpp"
 
-bool convert_string_to_arg_list(std::string_view source, std::vector<std::string> &out_args);
+// Returns true if a built command was run.
+bool check_built_in_commands(std::string_view line, Function_Map &commands);
 void run_help_command(std::string_view line, Function_Map &commands);
+void run_where_command(std::string_view line, Function_Map &commands);
+void run_custom_command(std::string_view line, Function_Map &commands);
+bool convert_string_to_arg_list(std::string_view source, std::vector<std::string> &out_args);
 void print_unknown_command(std::string_view command_name);
 
 const std::string WHERE_COMMAND = "where";
@@ -32,85 +36,59 @@ int main(int arg_c, const char **args)
 			break;
 		}
 
-		if (line == EXIT_COMMAND)
+		if (check_built_in_commands(line, commands))
 		{
-			break;
-		}
-
-		if (line.starts_with(WHERE_COMMAND))
-		{
-			if (line.size() + 1 == WHERE_COMMAND.size())
-			{
-				std::cout << "Type 'where <command>' to see where a command is implemented\n";
-				continue;
-			}
-			
-			std::string view(line.begin() + WHERE_COMMAND.size() + 1, line.end());
-
-			if (commands.contains(view))
-			{
-				auto cmd = commands[view];
-				std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
-			}
-			else
-			{
-				std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", view);
-			}
 			continue;
 		}
 
-		if (line.starts_with(HELP_COMMAND))
-		{
-			run_help_command(line, commands);
-			continue;
-		}
-
-		std::vector<std::string> args;
-		bool success = convert_string_to_arg_list(line.c_str(), args);
-		if (!success)
-		{
-			std::cout << "Failed to parse inputs, try again\n";
-			continue;
-		}
-
-		if (args.size() == 0)
-		{
-			std::cout << "Write the name of a command followed by the arguments to run the command!\n";
-			std::cout << "Try writing 'help' to get a list of commands!";
-			continue;
-		}
-
-		std::string function_name = args[0];
-		args.erase(args.begin(), args.begin() + 1);
-
-		if (commands.contains(function_name))
-		{
-			Value v;
-			bool success = commands[function_name].function(args, v);
-			if (!success)
-			{
-				continue;
-			}
-
-			if (v.type != Value_Type::VOID)
-			{
-				std::cout << value_to_string(v);
-			    std::cout << "\n";
-			}
-		}
-		else
-		{
-			print_unknown_command(function_name);
-		}
+		run_custom_command(line, commands);
 	}
 
 	return 0;
 }
 
 
-void print_unknown_command(std::string_view command_name)
+bool check_built_in_commands(std::string_view line, Function_Map &commands)
 {
-	std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", command_name);
+	if (line == EXIT_COMMAND)
+	{
+		return true;
+	}
+
+	if (line.starts_with(WHERE_COMMAND))
+	{
+		run_where_command(line, commands);
+		return true;
+	}
+
+	if (line.starts_with(HELP_COMMAND))
+	{
+		run_help_command(line, commands);
+		return true;
+	}
+
+	return false;
+}
+
+void run_where_command(std::string_view line, Function_Map &commands)
+{
+	if (line.size() + 1 == WHERE_COMMAND.size())
+	{
+		std::cout << "Type 'where <command>' to see where a command is implemented\n";
+		return;
+	}
+
+	std::string view(line.begin() + WHERE_COMMAND.size() + 1, line.end());
+
+	if (commands.contains(view))
+	{
+		auto cmd = commands[view];
+		std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
+	}
+	else
+	{
+		print_unknown_command(view);
+	}
 }
 
 void run_help_command(std::string_view line, Function_Map &commands)
@@ -174,6 +152,46 @@ void run_help_command(std::string_view line, Function_Map &commands)
 	}
 }
 
+void run_custom_command(std::string_view line, Function_Map &commands)
+{
+	std::vector<std::string> args;
+	bool success = convert_string_to_arg_list(line.data(), args);
+	if (!success)
+	{
+		std::cout << "Failed to parse inputs, try again\n";
+		return;
+	}
+
+	if (args.size() == 0)
+	{
+		std::cout << "Write the name of a command followed by the arguments to run the command!\n";
+		std::cout << "Try writing 'help' to get a list of commands!";
+		return;
+	}
+
+	std::string function_name = args[0];
+	args.erase(args.begin(), args.begin() + 1);
+
+	if (commands.contains(function_name))
+	{
+		Value v;
+		bool success = commands[function_name].function(args, v);
+		if (!success)
+		{
+			return;
+		}
+
+		if (v.type != Value_Type::VOID)
+		{
+			std::cout << value_to_string(v);
+			std::cout << "\n";
+		}
+	}
+	else
+	{
+		print_unknown_command(function_name);
+	}
+}
 
 bool convert_string_to_arg_list(std::string_view source, std::vector<std::string> &out_args)
 {
@@ -201,6 +219,13 @@ bool convert_string_to_arg_list(std::string_view source, std::vector<std::string
 
 	return true;
 }
+
+void print_unknown_command(std::string_view command_name)
+{
+	std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", command_name);
+}
+
+// COMMANDS
 
 
 CONSOLE_COMMAND
