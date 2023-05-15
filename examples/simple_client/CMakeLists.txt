@@ -11,7 +11,7 @@ set(input_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/include")
 set(output_file "${output_dir}/output.hpp")
 
-message ("EXECUTABLE: ${FUNCTION-FINDER_EXE_PATH} ")
+message ("EXECUTABLE: ${FUNCTION-FINDER_EXE_PATH}")
 message ("INPUT: ${input_dir}")
 message ("OUTPUT: ${output_file}")
 
@@ -21,7 +21,7 @@ endif(FUNCTION-FINDER_BUILD_FROM_SOURCE)
 
 add_custom_command(TARGET Simple_Client
     PRE_BUILD
-    COMMAND ${FUNCTION-FINDER_EXE_PATH} "${input_dir}" "${output_file}" "MY_COMMAND" init_my_commands
+    COMMAND ${FUNCTION-FINDER_EXE_PATH} "${input_dir}" "${output_file}" "MY_COMMAND" init_my_commands _new_wrapper_
 )
 
 target_include_directories(Simple_Client PRIVATE ${output_dir})

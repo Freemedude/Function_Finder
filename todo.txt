@@ -1,9 +1,7 @@
 TODO:
- * Namespaces
- * Documentation
- * Cleanup
- * Modernization
- * Ask Chat-GPT for feedback
- * Blog
- * Bugs:
-    * 
+ * Documentation.
+ * Namespaces.
+ * Ask Chat-GPT for feedback.
+ * Blog.
+ * Unit tests.
+ * Support multiple tags on the same function. So you could have a CONSOLE_COMMAND, and INI_FILE_COMMAND tag on the same function, and have it show up for both searched.

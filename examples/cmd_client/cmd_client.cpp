@@ -83,7 +83,8 @@ void run_where_command(std::string_view line, Function_Map &commands)
 	if (commands.contains(view))
 	{
 		auto cmd = commands[view];
-		std::cout << std::format("You can find command \"{}\" at {} : L{}\n", view, cmd.file, cmd.line);
+		std::cout << std::format("You can find command \"{}\" at {} : L{}\n", 
+			view, cmd.file, cmd.line);
 	}
 	else
 	{
@@ -101,7 +102,8 @@ void run_help_command(std::string_view line, Function_Map &commands)
 			std::cout << " - " << cmd.first << "\n";
 		}
 
-		std::cout << "You can get more details about a command with 'help <command>' or 'where <command>'\n";
+		std::cout << "You can get more details about a command with 'help <command>' or "
+			" 'where <command>'\n";
 		return;
 	}
 
@@ -112,12 +114,14 @@ void run_help_command(std::string_view line, Function_Map &commands)
 	if (commands.contains(command_name))
 	{
 		auto cmd = commands[command_name];
-		std::cout << std::format("Command \"{}\" \n\tNote: {}\n\tUsage: '{} ", cmd.name, cmd.note, cmd.name);
+		std::cout << std::format("Command \"{}\" \n\tNote: {}\n\tUsage: '{} ",
+			cmd.name, cmd.note, cmd.name);
 
 		// These are the required arguments:
 		for (int i = 0; i < cmd.num_required_args; i++)
 		{
-			std::cout << std::format("<{} : {}>", cmd.arguments[i].name, type_to_readable_string(cmd.arguments[i].type));
+			std::cout << std::format("<{} : {}>", cmd.arguments[i].name,
+				value_type_to_readable_string(cmd.arguments[i].type));
 			if (i < cmd.num_required_args - 1)
 			{
 				std::cout << " ";
@@ -134,7 +138,8 @@ void run_help_command(std::string_view line, Function_Map &commands)
 		for (int i = cmd.num_required_args; i < cmd.arguments.size(); i++)
 		{
 			std::cout << std::format("[{} : {} = {}]",
-				cmd.arguments[i].name, type_to_readable_string(cmd.arguments[i].type), value_to_string(cmd.arguments[i].default_value));
+				cmd.arguments[i].name, value_type_to_readable_string(cmd.arguments[i].type),
+				to_string(cmd.arguments[i].default_value));
 
 			// Check if there are more arguments.
 			if (i < cmd.arguments.size() - 1)
@@ -144,7 +149,7 @@ void run_help_command(std::string_view line, Function_Map &commands)
 		}
 
 		// Return type
-		std::cout << std::format(" -> {}'\n", type_to_readable_string(cmd.return_type));
+		std::cout << std::format(" -> {}'\n", value_type_to_readable_string(cmd.return_type));
 	}
 	else
 	{
@@ -183,7 +188,7 @@ void run_custom_command(std::string_view line, Function_Map &commands)
 
 		if (v.type != Value_Type::VOID)
 		{
-			std::cout << value_to_string(v);
+			std::cout << to_string(v);
 			std::cout << "\n";
 		}
 	}
@@ -222,7 +227,8 @@ bool convert_string_to_arg_list(std::string_view source, std::vector<std::string
 
 void print_unknown_command(std::string_view command_name)
 {
-	std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", command_name);
+	std::cout << std::format("Unknown command \"{}\". Try \"help\" to get a list of commands.\n", 
+		command_name);
 }
 
 // COMMANDS
@@ -253,7 +259,8 @@ std::string append(std::string a, float b)
 }
 
 CONSOLE_COMMAND // Does some fkin nonsense
-void complex(std::string base, int num_prints, bool capitalize = false, std::string to_print = "cringe", int indents = 4)
+void complex(std::string base, int num_prints, bool capitalize = false, 
+	std::string to_print = "cringe", int indents = 4)
 {
 	if (capitalize)
 	{

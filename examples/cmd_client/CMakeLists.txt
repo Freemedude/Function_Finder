@@ -21,7 +21,7 @@ endif(FUNCTION-FINDER_BUILD_FROM_SOURCE)
 
 add_custom_command(TARGET Cmd_Client
     PRE_BUILD
-    COMMAND ${FUNCTION-FINDER_EXE_PATH} "${input_dir}" "${output_file}" CONSOLE_COMMAND init_console_commands
+    COMMAND ${FUNCTION-FINDER_EXE_PATH} "${input_dir}" "${output_file}" CONSOLE_COMMAND init_console_commands _my_very_special_wrapper_
 )
 
 target_include_directories(Cmd_Client PRIVATE ${output_dir})

@@ -11,7 +11,6 @@
 
 int main()
 {
-
     Function_Map commands;
     init_my_commands(commands);
 
@@ -22,20 +21,20 @@ int main()
     std::vector<std::string> args = {"5", "1.2f", "42.0", "Not using the default!", "false"};
     std::cout << "    ";
     commands["some_command"].function(args, value);
-    std::cout << "    " << value_to_string(value) << "\n";
+    std::cout << "    " << to_string(value) << "\n";
     std::cout << "\n";
 
     std::cout << "Correct usage using defaults:\n";
     args = {"5", "1.2f", "42.0"};
     std::cout << "    ";
     commands["some_command"].function(args, value);
-    std::cout << "    " << value_to_string(value) << "\n";
+    std::cout << "    " << to_string(value) << "\n";
     std::cout << "\n";
 
-    std::cout << "Incorrect usage, wrong type:\n";
-    args = {"5", "Woups! A string doesn't go here!", "5"};
-    std::cout << "    ";
-    commands["some_command"].function(args, value);
+    std::cout << "Incorrect usage, wrong type:\n"; 
+    args = {"5", "Woups! A string doesn't go here!", "5"}; 
+    std::cout << "    "; 
+    commands["some_command"].function(args, value); 
     std::cout << "\n";
 
     std::cout << "Incorrect usage, wrong number of arguments:\n";
@@ -51,17 +50,18 @@ int main()
     std::cout << " - Line: " << command.line << "\n";
     std::cout << " - Name: " << command.name << "\n";
     std::cout << " - Note (The comment after the search term): " << command.note << "\n";
-    std::cout << " - Return type: " << type_to_string(command.return_type) << "\n";
+    std::cout << " - Return type: " << to_string(command.return_type) << "\n";
     std::cout << " - Argument information (types, names, and default arguments.):\\n";
     for(const auto &arg : command.arguments)
     {
         if(arg.has_default_value)
         {
-            std::cout << std::format("    - {} {} = {}\n", type_to_cpp_type(arg.type), arg.name, value_to_string(arg.default_value));
+            std::cout << std::format("    - {} {} = {}\n", 
+                value_type_to_cpp_type(arg.type), arg.name, to_string(arg.default_value));
         }
         else
         {
-            std::cout << std::format("    - {} {}\n", type_to_cpp_type(arg.type), arg.name);
+            std::cout << std::format("    - {} {}\n", value_type_to_cpp_type(arg.type), arg.name);
         }
     }
 
