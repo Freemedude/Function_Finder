@@ -232,6 +232,7 @@ size_t get_argument(std::string_view source, Argument &out_arg);
 /// in source</returns>
 size_t get_type(std::string_view source, Value_Type &out_type);
 
+size_t get_comment(std::string_view source, std::string &out_result);
 
 /**************************************
  *           Exporter helpers         *

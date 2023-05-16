@@ -8,7 +8,7 @@
 
 // This command WILL be included in the search, because we're asking for everything in the 
 // examples/cmd_client directory,
-CONSOLE_COMMAND
+CONSOLE_COMMAND // Hello
 inline int print_hello_and_ret_2()
 {
     printf("hello!\n");

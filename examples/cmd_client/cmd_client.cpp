@@ -10,7 +10,6 @@
 #include "cmd_client.hpp"
 
 // Returns true if a built command was run.
-bool check_built_in_commands(std::string_view line, Function_Map &commands);
 void run_help_command(std::string_view line, Function_Map &commands);
 void run_where_command(std::string_view line, Function_Map &commands);
 void run_custom_command(std::string_view line, Function_Map &commands);
@@ -36,8 +35,20 @@ int main(int arg_c, const char **args)
 			break;
 		}
 
-		if (check_built_in_commands(line, commands))
+		if (line == EXIT_COMMAND)
 		{
+			break;
+		}
+
+		if (line.starts_with(WHERE_COMMAND))
+		{
+			run_where_command(line, commands);
+			return true;
+		}
+
+		if (line.starts_with(HELP_COMMAND))
+		{
+			run_help_command(line, commands);
 			continue;
 		}
 
@@ -45,29 +56,6 @@ int main(int arg_c, const char **args)
 	}
 
 	return 0;
-}
-
-
-bool check_built_in_commands(std::string_view line, Function_Map &commands)
-{
-	if (line == EXIT_COMMAND)
-	{
-		return true;
-	}
-
-	if (line.starts_with(WHERE_COMMAND))
-	{
-		run_where_command(line, commands);
-		return true;
-	}
-
-	if (line.starts_with(HELP_COMMAND))
-	{
-		run_help_command(line, commands);
-		return true;
-	}
-
-	return false;
 }
 
 void run_where_command(std::string_view line, Function_Map &commands)
@@ -134,7 +122,7 @@ void run_help_command(std::string_view line, Function_Map &commands)
 			std::cout << " ";
 		}
 
-		// Thesee are the optional arguments. They therefore include the default value.
+		// These are the optional arguments. They therefore include the default value.
 		for (int i = cmd.num_required_args; i < cmd.arguments.size(); i++)
 		{
 			std::cout << std::format("[{} : {} = {}]",
@@ -148,8 +136,16 @@ void run_help_command(std::string_view line, Function_Map &commands)
 			}
 		}
 
+
 		// Return type
 		std::cout << std::format(" -> {}'\n", value_type_to_readable_string(cmd.return_type));
+
+		std::cout << "Arguments:\n";
+		// These are the optional arguments. They therefore include the default value.
+		for (const auto &arg : cmd.arguments)
+		{
+			std::cout << std::format("\t- {} {}\n", arg.name, arg.note);
+		}
 	}
 	else
 	{
@@ -288,7 +284,7 @@ std::string just_return(std::string str = "hello")
 }
 
 CONSOLE_COMMAND // Squares the second parameter. Ignores the first. Very useful for squaring needs!
-int multiply(int a, double b = 2.1)
+int multiply(int a, double b = 2.1 /*B defaults to 2.1*/)
 {
 	return b * b;
 }

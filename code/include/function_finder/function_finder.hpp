@@ -186,6 +186,11 @@ struct Argument
 	Value default_value = {};
 
 	/// <summary>
+	/// Argument note.
+	/// </summary>
+	std::string note = "";
+
+	/// <summary>
 	/// Default constructor used when first filling in argument data.
 	/// </summary>
 	Argument() = default;
@@ -193,17 +198,16 @@ struct Argument
 	/// <summary>
 	/// Constructor for arguments without default values.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type)
+	Argument(const std::string &name, Value_Type type, const std::string &note)
+		:name(name), type(type), note(note)
 	{
-		this->name = name;
-		this->type = type;
 	}
 
 	/// <summary>
 	/// Constructor for arguments with string default value.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type, const char *default_value)
-		: Argument(name, type)
+	Argument(const std::string &name, Value_Type type, const std::string &note, const char *default_value)
+		: Argument(name, type, note)
 	{
 		this->has_default_value = true;
 		this->default_value.type = Value_Type::STRING;
@@ -213,8 +217,8 @@ struct Argument
 	/// <summary>
 	/// Constructor for arguments with int default value.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type, int default_value)
-		: Argument(name, type)
+	Argument(const std::string &name, Value_Type type, const std::string &note, int default_value)
+		: Argument(name, type, note)
 	{
 		this->has_default_value = true;
 		this->default_value.type = Value_Type::INTEGER;
@@ -224,8 +228,8 @@ struct Argument
 	/// <summary>
 	/// Constructor for arguments with float default value.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type, float default_value)
-		: Argument(name, type)
+	Argument(const std::string &name, Value_Type type, const std::string &note, float default_value)
+		: Argument(name, type, note)
 	{
 		this->has_default_value = true;
 		this->default_value.type = Value_Type::FLOAT;
@@ -235,8 +239,8 @@ struct Argument
 	/// <summary>
 	/// Constructor for arguments with double default value.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type, double default_value)
-		: Argument(name, type)
+	Argument(const std::string &name, Value_Type type, const std::string &note, double default_value)
+		: Argument(name, type, note)
 	{
 		this->has_default_value = true;
 		this->default_value.type = Value_Type::DOUBLE;
@@ -246,8 +250,8 @@ struct Argument
 	/// <summary>
 	/// Constructor for arguments with bool default value.
 	/// </summary>
-	Argument(const std::string &name, Value_Type type, bool default_value)
-		: Argument(name, type)
+	Argument(const std::string &name, Value_Type type, const std::string &note, bool default_value)
+		: Argument(name, type, note)
 	{
 		this->has_default_value = true;
 		this->default_value.type = Value_Type::BOOLEAN;
@@ -276,6 +280,11 @@ std::string_view advance(std::string_view source, size_t length)
 /// </summary>
 std::string_view skip_whitespace(std::string_view source)
 {
+	if(source.size() == 0)
+	{
+		return source;
+	}
+
 	size_t max_length = source.size();
 	size_t length = 0;
 	while (length < max_length && std::isspace(source[(int)length]))

@@ -4,6 +4,7 @@ Copyright Daniel 2023
 */
 
 #include "function_finder_internal.hpp"
+#include <cassert>
 
 int main(int arg_count, const char **args)
 {
@@ -142,35 +143,15 @@ bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &
 
 bool import_function(std::string_view source, Function_Decl *out_function)
 {
-	// We got a comment!
-	if (source[0] == '/')
+	auto current = source;
+	// Check for note
+	std::string note;
+	current = skip_whitespace(current);
+	auto comment_size = get_comment(source, note);
+	if(comment_size)
 	{
-		if (source[1] == '/') // Line comment. Nice and easy.
-		{
-			std::string_view note_view = advance(source, (size_t)2);
-			note_view = skip_whitespace(note_view);
-			auto line_end = note_view.find('\n');
-			out_function->note = std::string(note_view.begin(), note_view.begin() + line_end);
-			source = advance(source, (size_t)source.find('\n') + 1);
-		}
-		else if (source[1] == '*') // Block comment.
-		{
-			// Find the end of the comment.
-			auto comment_end = source.find("*/");
-			if (comment_end == std::string_view::npos)
-			{
-				// There is no end to this block comment. It will consume us all.
-				return false;
-			}
-
-			std::string_view note_view(source.begin() + 2, source.begin() + comment_end);
-			note_view = skip_whitespace(note_view);
-			out_function->note = std::string(note_view.begin(), note_view.end());
-
-			// Sanitize.
-			out_function->note = std::regex_replace(out_function->note, std::regex("\n"), "\\n");
-			source = advance(source, comment_end + 2); // +2 to skip the '*/' bit
-		}
+		out_function->note = note;
+		source = advance(source, comment_size);
 	}
 
 	// Check for 'inline' modifier
@@ -232,12 +213,63 @@ bool export_functions(const Settings &settings, const std::vector<Function_Decl>
 	return true;
 }
 
+// Returns the size of the comment. If it returns 0 then there is no comment.
+// Does not skip whitespace, do it yourself!
+size_t get_comment(std::string_view source, std::string &out_result)
+{
+	auto current = source;
 
+	// Confirm that it's a comment
+	if(current.size() < 2 || current[0] != '/' || (current[1] != '/' && current[1] != '*'))
+	{
+		return 0;
+	}
+
+	bool is_line_comment = current[1] == '/';
+
+	current = advance(current, (size_t) 2);
+	current = skip_whitespace(current);
+
+	if (is_line_comment)
+	{
+		auto end = current.find('\n');
+		if(end == std::string_view::npos)
+		{
+			// This is the end of a file without a newline, so find string end instead.
+			end = current.find('\0');
+			assert(end != std::string_view::npos);
+		}
+
+		out_result = std::string(current.begin(), current.begin() + end);
+		current = advance(current, end + 1);
+	}
+	else
+	{		
+		// Find the end of the comment.
+		auto end = current.find("*/");
+		if(end == std::string_view::npos)
+		{
+			std::cout << "Could not find */ in \n" << current << '\n';
+		}
+		
+		out_result = std::string(current.begin(), current.begin() + end);
+
+		// Sanitize.
+		out_result = std::regex_replace(out_result, std::regex("\n"), "\\n");
+		current = advance(current, end + 2);
+	}
+
+	auto result = source.size() - current.size();
+	return result;
+
+}
 
 size_t get_type(std::string_view source, Value_Type &out_type)
 {
 	size_t result = 0;
-	source = skip_whitespace(source);
+	
+	auto current = skip_whitespace(source);
+
 	std::string str;
 	size_t length = get_symbol(source, str);
 	if (!length)
@@ -281,125 +313,96 @@ size_t get_type(std::string_view source, Value_Type &out_type)
 	return result;
 }
 
-size_t get_argument(std::string_view source, Argument &out_arg)
+size_t parse_type(std::string_view source, Value_Type type, Value &out_result)
 {
-	source = skip_whitespace(source);
-	Value_Type type;
-	size_t final_length = get_type(source, type);
-	source = advance(source, final_length);
-	source = skip_whitespace(source);
-	std::string name;
-	size_t length = get_symbol(source, name);
-	if (!length)
+	size_t length = 0;
+
+	switch (type)
 	{
-		std::cout << std::format("Failed to get argument name at position '{}'\n", source.data());
-		return 0;
+	case Value_Type::BOOLEAN:
+		length = get_bool(source, out_result.data.bool_value);
+		break;
+	case Value_Type::FLOAT:
+		length = get_float(source, out_result.data.float_value);
+		break;
+	case Value_Type::DOUBLE:
+		length = get_double(source, out_result.data.double_value);
+		break;
+	case Value_Type::INTEGER:
+		length = get_int(source, out_result.data.int_value);
+		break;
+	case Value_Type::STRING:
+		{
+		std::string result;
+		length = get_quoted_string(source, result);
+		if (length)
+		{
+			strncpy(out_result.data.string_value, result.c_str(), result.length());
+		}
+		break;
+		}
 	}
 
-	final_length += length;
-	source = advance(source, length);
+	return length;
+}
 
-	source = skip_whitespace(source);
+size_t get_argument(std::string_view source, Argument &out_arg)
+{
+	auto current = skip_whitespace(source);
 
+	// Get the type
+	Value_Type type;
+	auto type_length = get_type(current, type);
+	current = advance(current, type_length);
+
+	// Get the argument name
+	current = skip_whitespace(current);
+	std::string name;
+	size_t name_length = get_symbol(current, name);
+	if (!name_length)
+	{
+		std::cout << std::format("[ERROR] Failed to get argument name at position '{}'\n", current);
+		return 0;
+	}
 	out_arg.name = name;
 	out_arg.type = type;
 
+	current = advance(current, name_length);
+	current = skip_whitespace(current);
+
 	// Check for default value
-	if (source.size() > 0 && source[0] == '=')
+	if (current.size() > 0 && current[0] == '=')
 	{
 		out_arg.has_default_value = true;
 		out_arg.default_value.type = type;
-		source = advance(source, (size_t)1);
-		source = skip_whitespace(source);
-		switch (type)
-		{
-		case Value_Type::BOOLEAN:
-		{
 
-			bool result;
-			size_t length = get_bool(source, result);
-			if (length)
-			{
-				out_arg.default_value.data.bool_value = result;
-				source = advance(source, length);
-				final_length += length;
-			}
-			else
-			{
-				return false;
-			}
-			break;
-		}
-		case Value_Type::FLOAT:
+		current = advance(current, (size_t)1);
+		current = skip_whitespace(current);
+		
+		auto default_arg_length = parse_type(current, type, out_arg.default_value);
+		if(default_arg_length)
 		{
-			float result;
-			size_t length = get_float(source, result);
-			if (length)
-			{
-				out_arg.default_value.data.float_value = result;
-				source = advance(source, length);
-				final_length += length;
-			}
-			else
-			{
-				return 0;
-			}
-			break;
-		}
-		case Value_Type::DOUBLE:
-		{
-			double result;
-			size_t length = get_double(source, result);
-			if (length)
-			{
-				out_arg.default_value.data.double_value = result;
-				source = advance(source, length);
-				final_length += length;
-			}
-			else
-			{
-				return 0;
-			}
-			break;
-		}
-		case Value_Type::INTEGER:
-		{
-
-			int result;
-			size_t length = get_int(source, result);
-			if (length)
-			{
-				out_arg.default_value.data.int_value = result;
-				source = advance(source, length);
-				final_length += length;
-			}
-			else
-			{
-				return false;
-			}
-			break;
-		}
-		case Value_Type::STRING:
-		{
-			std::string result;
-			size_t length = get_quoted_string(source, result);
-			if (length)
-			{
-				strncpy(out_arg.default_value.data.string_value, result.c_str(), result.length());
-				source = advance(source, length);
-				final_length += length;
-			}
-			else
-			{
-				std::cout << "Failed to get string default value " << source << "\n";
-				return 0;
-			}
-			break;
-		}
+			current = advance(current, default_arg_length);
 		}
 	}
 
-	return final_length;
+	current = skip_whitespace(current);
+	//std::cout << name << " after skipping whitespace: " << current << '(' << source.size() - current.size() << " of " << source.size() << ')' <<   std::endl;
+	
+	// Check for note.
+	std::string note;
+	size_t comment_length = get_comment(current, note);
+	//std::cout << "after getting comment: " << current << '(' << source.size() - current.size() << " of " << source.size() << ')' <<   std::endl;
+	if(comment_length)
+	{
+		//std::cout << "There is a comment: '" << note << "'\n";
+		current = advance(current, comment_length);
+		out_arg.note = note;
+	}
+
+	//std::cout << "after comment_length check: " << current << '(' << source.size() - current.size() << " of " << source.size() << ')' <<   std::endl;
+	
+	return source.size();
 }
 
 bool get_arguments(std::string_view source, std::vector<Argument> &out_args)
@@ -419,30 +422,67 @@ bool get_arguments(std::string_view source, std::vector<Argument> &out_args)
 	while (true)
 	{
 		bool found_end_parenthesis = false;
+		bool in_line_comment = false;
+		bool in_block_comment = false;
 		size_t length = 0;
 
-		// Delimit each argument
+		// Find the end of the argument
 		while (true)
 		{
-			if (source[length] == ',')
+			// Start line comment
+			if (source[length] == '/' && source[length + 1] == '/')
+			{
+				in_line_comment = true;;
+			}
+			
+			// End line comment
+			if(in_line_comment && source[length] == '\n')
+			{
+				in_line_comment = false;
+			}
+
+			// Start block comment
+			if (source[length] == '/' && (source[length + 1] == '*'))
+			{
+				in_block_comment = true;
+			}
+
+			// End block comment
+			if (source[length] == '*' && (source[length + 1] == '/'))
+			{
+				in_block_comment = false;
+			}
+
+			bool in_comment = in_block_comment || in_line_comment;
+
+			// We've reached the end of the argument if we've reached a comma not in a comment.
+			if (!in_comment && source[length] == ',')
 			{
 				length++;
 				break;
 			}
 
-			if (source[length] == ')')
+			// We've reached the end of all arguments if we're found an end parenthesis that's not 
+			// in a comment.
+			if (!in_comment && source[length] == ')')
 			{
+				if(length > 0)
+				{
+					length++;
+				}
 				found_end_parenthesis = true;
 				break;
 			}
 
-			length += 1;
+			length++;
 		}
 
 		if (length > 0)
 		{
+			auto arg_source = source.substr(0, length - 1);
+			
 			Argument arg{};
-			bool success = get_argument(source.substr(0, length), arg);
+			bool success = get_argument(arg_source, arg);
 
 			if (!success)
 			{
@@ -705,14 +745,14 @@ void export_initialization_function(Cpp_File_Writer &w,
 
 			if (arg.has_default_value)
 			{
-				w << std::format("Argument(\"{}\", {}, {}){}",
-					arg.name, to_string(arg.type), to_string(arg.default_value), 
+				w << std::format("Argument(\"{}\", {}, \"{}\", {}){}",
+					arg.name, to_string(arg.type), arg.note, to_string(arg.default_value), 
 					last_iter ? "" : ",");
 			}
 			else
 			{
-				w << std::format("Argument(\"{}\", {}){}",
-					arg.name, to_string(arg.type), last_iter ? "" : ",");
+				w << std::format("Argument(\"{}\", {}, \"{}\"){}",
+					arg.name, to_string(arg.type), arg.note, last_iter ? "" : ",");
 			}
 		}
 		w.unindent();
@@ -802,6 +842,7 @@ void print_extensions()
 
 void print_example()
 {
+	// TODO: Use verbatim string.
 	std::cout << "// Example of usage code:\n";
 	std::cout << "// For this example, run Function Finder with these arguments 'client.cpp output.hpp MY_COMMAND init_my_commands':\n";
 	std::cout << "// client.cpp\n";

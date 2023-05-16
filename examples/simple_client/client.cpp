@@ -51,13 +51,13 @@ int main()
     std::cout << " - Name: " << command.name << "\n";
     std::cout << " - Note (The comment after the search term): " << command.note << "\n";
     std::cout << " - Return type: " << to_string(command.return_type) << "\n";
-    std::cout << " - Argument information (types, names, and default arguments.):\\n";
+    std::cout << " - Argument information (types, names, default arguments, and notes.):\\n";
     for(const auto &arg : command.arguments)
     {
         if(arg.has_default_value)
         {
-            std::cout << std::format("    - {} {} = {}\n", 
-                value_type_to_cpp_type(arg.type), arg.name, to_string(arg.default_value));
+            std::cout << std::format("    - {} {} = {} // {}\n", 
+                value_type_to_cpp_type(arg.type), arg.name, to_string(arg.default_value), arg.note);
         }
         else
         {
@@ -70,7 +70,8 @@ int main()
 
 // This is the command we want it to find!
 MY_COMMAND // I can even give it a comment to act as documentation!
-bool some_command(int i, float f, double d, std::string s = "default_values_are_supported", bool b = false)
+bool some_command(int i, float f // Documentation for f: Use it carefully. VERY carefully.
+, double d, std::string s = "default_values_are_supported", bool b = false /* Documentation for b*/)
 {
     std::cout << std::format("Hello from 'some_command'! These were the arguments: i = {}, f = {}, d = {}, s = {}, b = {}\n", i, f, d, s, b);
     std::cout << "Returning if i == 5!\n";
@@ -80,8 +81,7 @@ bool some_command(int i, float f, double d, std::string s = "default_values_are_
 // This is the command we want it to find!
 MY_COMMAND 
 /*
-    This function is parsed, but not used for anything.
-*/
+    This function is parsed, but not used for anything.*/
 int some_other_command(int integer)
 {
     return integer + 2;
