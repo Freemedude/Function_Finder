@@ -61,7 +61,7 @@ bool import_functions(const Settings &settings, std::vector<Function_Decl> &inou
 
 	if (std::filesystem::is_regular_file(settings.source))
 	{
-		return import_file(settings.source, inout_functions, settings.search_term);
+		return import_file(settings.source, inout_functions, settings);
 	}
 	else if (std::filesystem::is_directory(settings.source))
 	{
@@ -84,7 +84,7 @@ bool import_directory(const std::filesystem::path &path,
 		if (ele.is_regular_file() && file_matches_extension(ele.path()))
 		{
 			std::cout << std::format("  - {}\n", ele.path().generic_string());
-			if (!import_file(ele.path(), inout_functions, settings.search_term))
+			if (!import_file(ele.path(), inout_functions, settings))
 			{
 				return false;
 			}
@@ -101,7 +101,7 @@ bool import_directory(const std::filesystem::path &path,
 }
 
 bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_functions,
-	std::string_view search_term)
+	const Settings &settings)
 {
 	std::string content_str = read_file_to_string(path);
 	std::string_view content_view = content_str;
@@ -109,18 +109,15 @@ bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &
 	// Loop over every line in the file, checking to see if it starts with the search term.
 	for (size_t line = 1; true; line++)
 	{
-		if (content_view.starts_with(search_term))
+		if (content_view.starts_with(settings.search_term))
 		{
 			Function_Decl func;
 			func.line = line + 1;
 			func.file = path.generic_string();
 
-			// Skip the search term
 			auto func_view = skip_whitespace(content_view);
-			func_view = advance(func_view, search_term.size());
-			func_view = skip_whitespace(func_view);
 
-			bool success = import_function(func_view, &func);
+			bool success = import_function(func_view, &func, settings);
 			if (!success)
 			{
 				return false;
@@ -141,41 +138,82 @@ bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &
 	return true;
 }
 
-bool import_function(std::string_view source, Function_Decl *out_function)
+bool import_function(std::string_view source, Function_Decl *out_function, const Settings &setting)
 {
-	auto current = source;
+	// Skip the search term
+	auto current = advance(source, setting.search_term.size());
+	current = skip_whitespace(current);
+
 	// Check for note
 	std::string note;
 	current = skip_whitespace(current);
-	auto comment_size = get_comment(source, note);
+	auto comment_size = get_comment(current, note);
 	if(comment_size)
 	{
 		out_function->note = note;
-		source = advance(source, comment_size);
+		current = advance(current, comment_size);
 	}
+
+
+	// Skip any other tags by waiting until we get either "inline" or some return type.
+	bool found_function = false;
+	while(true)
+	{
+		current = skip_whitespace(current);
+		
+		// Break if it says "inline"...
+		if(current.starts_with("inline"))
+		{
+			break;
+		}
+
+		// ... or if it's a supported type we support.
+		Value_Type type;
+		size_t type_length = get_type(current, type);
+		if(type_length && type != Value_Type::UNKNOWN)
+		{
+			break;
+		}
+
+		// If we get here there's another tag term or something else we don't support!
+		// Using get_symbol is not exactly right, since this would also support colons which is wrong.
+		std::string tag;
+		auto tag_size = get_symbol(current, tag);
+		if(tag_size)
+		{
+			current = advance(current, tag_size);
+			std::string other_tag_comment;
+			auto comment_size = get_comment(current, other_tag_comment);
+			if(comment_size)
+			{
+				current = advance(current, comment_size);
+			}
+		}
+	}
+
 
 	// Check for 'inline' modifier
-	source = skip_whitespace(source);
-	if (source.starts_with("inline"))
+	current = skip_whitespace(current);
+	if (current.starts_with("inline"))
 	{
-		source = advance(source, sizeof("inline"));
+		current = advance(current, sizeof("inline"));
 	}
 
-	size_t final_length = get_type(source, out_function->return_type);
-	source = advance(source, final_length);
-	source = skip_whitespace(source);
+	size_t final_length = get_type(current, out_function->return_type);
+	current = advance(current, final_length);
+	current = skip_whitespace(current);
 
-	size_t length = get_symbol(source, out_function->name);
+	size_t length = get_symbol(current, out_function->name);
 	if (!length)
 	{
-		std::cerr << "[ERROR] Failed to get function name '" << source << "'\n";
+		std::cerr << "[ERROR] Failed to get function name '" << current << "'\n";
 		return false;
 	}
 
 	final_length += length;
-	source = advance(source, length);
+	current = advance(current, length);
 
-	bool success = get_arguments(source, out_function->arguments);
+	bool success = get_arguments(current, out_function->arguments);
 	if (!success)
 	{
 		std::cerr << "[ERROR] Failed to get arguments for function '" << out_function->name << "'\n";
@@ -480,7 +518,7 @@ bool get_arguments(std::string_view source, std::vector<Argument> &out_args)
 		if (length > 0)
 		{
 			auto arg_source = source.substr(0, length - 1);
-			
+
 			Argument arg{};
 			bool success = get_argument(arg_source, arg);
 

@@ -189,7 +189,7 @@ bool import_directory(const std::filesystem::path &path, std::vector<Function_De
 /// <param name="settings">Settings used for importing.</param>
 /// <returns>True if import was successful.</returns>
 bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_functions,
-	const std::string_view search_term);
+	const Settings &settings);
 
 /// <summary>
 /// Imports a function from source.
@@ -197,7 +197,7 @@ bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &
 /// <param name="source">A string_view starting with a function declaration to be parsed.</param>
 /// <param name="out_function">Function to output into.</param>
 /// <returns>True if successful.</returns>
-bool import_function(std::string_view source, Function_Decl *out_function);
+bool import_function(std::string_view source, Function_Decl *out_function, const Settings &settings);
 
 
 

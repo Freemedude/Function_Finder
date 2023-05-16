@@ -4,6 +4,7 @@
 
 // These is used as a search term for functions
 #define CONSOLE_COMMAND
+#define BONSOLE_COMMAND
 #define OTHER_CONSOLE_COMMAND
 
 // This command WILL be included in the search, because we're asking for everything in the 

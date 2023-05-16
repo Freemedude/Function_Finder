@@ -1,5 +1,4 @@
 TODO:
- * Support argument documentation.
  * Namespaces.
  * Ask Chat-GPT for feedback.
  * Blog.

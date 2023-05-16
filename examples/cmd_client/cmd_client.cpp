@@ -230,9 +230,11 @@ void print_unknown_command(std::string_view command_name)
 // COMMANDS
 
 
-CONSOLE_COMMAND
-/* Hello there. This function adds two numbers. a, and b.
-DEPRECATED
+CONSOLE_COMMAND/* Hello there. This function adds two numbers. a, and b.
+int
+*/
+BONSOLE_COMMAND/* Hello there. This function adds two numbers. a, and b.
+int
 */
 int add(int a, int b)
 {
