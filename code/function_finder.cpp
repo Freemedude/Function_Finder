@@ -100,6 +100,20 @@ bool import_directory(const std::filesystem::path &path,
 	return true;
 }
 
+bool matches_search_term(std::string_view source, const Settings &settings)
+{
+	if(source.size() < settings.search_term.size() + 1)
+	{
+		return false;
+	}
+	char character_after_term = source[settings.search_term.size()];
+	
+	bool matches = source.starts_with(settings.search_term) && 
+		(std::isspace(character_after_term) || character_after_term == '/'); 
+	return matches;	
+}
+
+
 bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &inout_functions,
 	const Settings &settings)
 {
@@ -109,7 +123,7 @@ bool import_file(const std::filesystem::path &path, std::vector<Function_Decl> &
 	// Loop over every line in the file, checking to see if it starts with the search term.
 	for (size_t line = 1; true; line++)
 	{
-		if (content_view.starts_with(settings.search_term))
+		if (matches_search_term(content_view, settings))
 		{
 			Function_Decl func;
 			func.line = line + 1;

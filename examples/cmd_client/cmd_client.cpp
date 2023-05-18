@@ -233,9 +233,6 @@ void print_unknown_command(std::string_view command_name)
 CONSOLE_COMMAND/* Hello there. This function adds two numbers. a, and b.
 int
 */
-BONSOLE_COMMAND/* Hello there. This function adds two numbers. a, and b.
-int
-*/
 int add(int a, int b)
 {
 	return a + b;
@@ -289,4 +286,10 @@ CONSOLE_COMMAND // Squares the second parameter. Ignores the first. Very useful 
 int multiply(int a, double b = 2.1 /*B defaults to 2.1*/)
 {
 	return b * b;
+}
+
+int my_function(int a)
+{
+	std::cout << "Pee pee\n";
+	return a;
 }
