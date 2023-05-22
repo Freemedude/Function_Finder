@@ -634,7 +634,7 @@ void export_wrapper_function(Cpp_File_Writer &w, const Function_Decl &f, const S
 	// Write the function definition
 	w << std::format("// Generated based on function \"{}\" from file \"{}\" L{}",
 		f.name, f.file, f.line);
-	w << std::format("inline Call_Result {}{}(std::vector<std::string> &args)",
+	w << std::format("inline Call_Result {}{}(std::vector<std::string> &args, bool call_client_function)",
 		settings.wrapper_function_prefix, f.name);
 	w << "{";
 	w.indent();
@@ -752,6 +752,12 @@ void export_argument_handler(Cpp_File_Writer &w, size_t i, const Argument &arg)
 void export_consumer_function_value_handler(Cpp_File_Writer &w, const Function_Decl &f)
 {
 	w << std::format("call_result.value.type = {};", to_string(f.return_type));
+	w << "call_result.status = Call_Result_Status::SUCCESS;";
+	w << "if(!call_client_function)";
+	w.indent();
+	w << "return call_result;";
+	w.unindent();
+	
 	if (f.return_type == Value_Type::VOID)
 	{
 		w << std::format("{};", function_call_string(f));
@@ -849,35 +855,39 @@ std::string function_call_string(const Function_Decl &func)
 void print_help()
 {
 	std::cout << "Function Finder (V" << VERSION << ")\n";
-	std::cout << "The purpose of this tool is to allow easy pre-processing of source files to extract functions to use as commands for terminals, consoles, games, etc. ";
-	std::cout << "It scans your file/directory for function prefixed by your search-term and outputs a header-file containing wrappers, function argument information, and more.\n";
-	std::cout << "\n";
-	std::cout << "Usage:\n";
-	std::cout << "    'function_finder.exe --help'\n";
-	std::cout << "        Help message on how to use Function Finder\n";
-	std::cout << "\n";
-	std::cout << "    'function_finder.exe <input_path> <output_path> <search_term> <init_function_name>'\n";
-	std::cout << "        Run the tool.\n";
-	std::cout << "\n";
-	std::cout << "        input_path:\n";
-	std::cout << "            The file or folder you want to scan for functions. If scanning directories run 'function_finder --extensions' to \n";
-	std::cout << "            see which file endings are included.\n";
-	std::cout << "        output_path:\n";
-	std::cout << "            The file you want to export to. This is presumed to be a header-file, so give it an extension accordingly (.hpp or .h).\n";
-	std::cout << "        search_term:\n";
-	std::cout << "            The term to search for. Should be a single word string using underscores. The idea here is to have a '#define' in the \n";
-	std::cout << "            input code that you put before the functions you want to find. See 'function_finder.exe --example' for an example of client code.\n";
-	std::cout << "        init_function_name:\n";
-	std::cout << "            What to name the Function Finder initialization function. If the idea is to use these functions as console-commands\n";
-	std::cout << "            you can name it something like 'init_console_commands'.\n";
-	std::cout << "        wrapper_function_prefix:\n";
-	std::cout << "            What prefix to add to the auto-generated wrapper functions.\n"; 
-	std::cout << "\n";
-	std::cout << "    'function_finder.exe --extensions'\n";
-	std::cout << "        Get a list of file-extensions that are included when scanning directories.\n";
-	std::cout << "\n";
-	std::cout << "    'function_finder.exe --example'\n";
-	std::cout << "        Get a full example use case of this tool\n";
+	std::cout << R"(
+The purpose of this tool is to allow easy pre-processing of source files to extract functions to use as commands for terminals, consoles, games, etc.
+It scans your file/directory for function prefixed by your search-term and outputs a header-file containing wrappers, function argument information, and more.
+See the "docs" folder for more details on exact function.
+
+Usage:
+    'function_finder.exe <input_path> <output_path> <search_term> <init_function_name> <wrapper_function_prefix>'
+        Run the tool.
+
+        input_path:
+            The file or folder you want to scan for functions. If scanning directories run 'function_finder --extensions' to
+            see which file endings are included.
+        output_path:
+            The file you want to export to. This is presumed to be a header-file, so give it an extension accordingly (.hpp or .h).
+        search_term:
+            The term to search for. Should be a single word string using underscores. The idea here is to have a '#define' in the
+            input code that you put before the functions you want to find. See 'function_finder.exe --example' for an example of client code.
+        init_function_name:
+            What to name the Function Finder initialization function. If the idea is to use these functions as console-commands
+            you can name it something like 'init_console_commands'.
+        wrapper_function_prefix:
+            What prefix to add to the auto-generated wrapper functions.
+
+    'function_finder.exe --help'
+        This help message on how to use Function Finder
+
+    'function_finder.exe --extensions'
+        Get a list of file-extensions that are included when scanning directories.
+
+    'function_finder.exe --example'
+        Get a full example use case of this tool
+
+)";
 }
 
 void print_extensions()
@@ -892,91 +902,91 @@ void print_extensions()
 			std::cout << ", ";
 		}
 	}
-	std::cout << "\n";
+	std::cout << '\n';
 }
 
 void print_example()
 {
-	// TODO: Use verbatim string.
-	std::cout << "// Example of usage code:\n";
-	std::cout << "// For this example, run Function Finder with these arguments 'client.cpp output.hpp MY_COMMAND init_my_commands':\n";
-	std::cout << "// client.cpp\n";
-	std::cout << "\n";
-	std::cout << "#include <iostream>\n";
-	std::cout << "#include <format>\n";
-	std::cout << "#include \"function_finder/function_finder.hpp\"\n";
-	std::cout << "#include \"output.hpp\"\n";
-	std::cout << "\n";
-	std::cout << "#define MY_COMMAND\n";
-	std::cout << "\n";
-	std::cout << "int main()\n";
-	std::cout << "{\n";
-	std::cout << "\n";
-	std::cout << "    Function_Map commands;\n";
-	std::cout << "    init_my_commands(commands);\n";
-	std::cout << "\n";
-	std::cout << "    // This is the variable we output all the commands to:\n";
-	std::cout << "    Value value;\n";
-	std::cout << "\n";
-	std::cout << "    std::cout << \"Correct usage:\\n\";\n";
-	std::cout << "    std::vector<std::string> args = {\"5\", \"1.2f\", \"42.0\", \"Not using the default!\", \"false\"};\n";
-	std::cout << "    std::cout << \"    \";\n";
-	std::cout << "    commands[\"some_command\"].function(args, value);\n";
-	std::cout << "    std::cout << \"    \" << to_string(value) << \"\\n\";\n";
-	std::cout << "    std::cout << \"\\n\";\n";
-	std::cout << "\n";
-	std::cout << "    std::cout << \"Correct usage using defaults:\\n\";\n";
-	std::cout << "    args = {\"5\", \"1.2f\", \"42.0\"};\n";
-	std::cout << "    std::cout << \"    \";\n";
-	std::cout << "    commands[\"some_command\"].function(args, value);\n";
-	std::cout << "    std::cout << \"    \" << to_string(value) << \"\\n\";\n";
-	std::cout << "    std::cout << \"\\n\";\n";
-	std::cout << "\n";
-	std::cout << "    std::cout << \"Correct usage, wrong type:\\n\";\n";
-	std::cout << "    args = {\"5\", \"Woups! A string doesn't go here!\", \"5\"};\n";
-	std::cout << "    std::cout << \"    \";\n";
-	std::cout << "    commands[\"some_command\"].function(args, value);\n";
-	std::cout << "    std::cout << \"\\n\";\n";
-	std::cout << "\n";
-	std::cout << "    std::cout << \"Correct usage, wrong number of arguments:\\n\";\n";
-	std::cout << "    args = {\"5\"};\n";
-	std::cout << "    std::cout << \"    \";\n";
-	std::cout << "    commands[\"some_command\"].function(args, value);\n";
-	std::cout << "    std::cout << \"\\n\";\n";
-	std::cout << "\n";
-	std::cout << "    // To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\n";
-	std::cout << "    std::cout << \"To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\\n\";\n";
-	std::cout << "    Function_Decl &command = commands[\"some_command\"];\n";
-	std::cout << "    std::cout << \" - File:\" << command.file << \"\\n\";\n";
-	std::cout << "    std::cout << \" - Line:\" << command.line << \"\\n\";\n";
-	std::cout << "    std::cout << \" - Name:\" << command.name << \"\\n\";\n";
-	std::cout << "    std::cout << \" - Note (The comment after the search term):\" << command.note << \"\\n\";\n";
-	std::cout << "    std::cout << \" - Return type:\" << type_to_string(command.return_type) << \"\\n\";\n";
-	std::cout << "    std::cout << \" - Argument information (types, names, and default arguments.):\";\n";
-	std::cout << "    for(const auto &arg : command.arguments)\n";
-	std::cout << "    {\n";
-	std::cout << "        if(arg.has_default_value)\n";
-	std::cout << "        {\n";
-	std::cout << "            std::cout << std::format(\"    - {} {} = {}\\n\", type_to_cpp_type(arg.type), arg.name, to_string(arg.default_value));\n";
-	std::cout << "        }\n";
-	std::cout << "        else\n";
-	std::cout << "        {\n";
-	std::cout << "            std::cout << std::format(\"    - {} {}\\n\", type_to_cpp_type(arg.type), arg.name);\n";
-	std::cout << "        }\n";
-	std::cout << "    }\n";
-	std::cout << "\n";
-	std::cout << "    return 0;\n";
-	std::cout << "}\n";
-	std::cout << "\n";
-	std::cout << "// This is the command we want it to find!\n";
-	std::cout << "MY_COMMAND // I can even give it a comment to act as documentation!\n";
-	std::cout << "bool some_command(int i, float f, double d, std::string s = \"default_values_are_supported\", bool b = false)\n";
-	std::cout << "{\n";
-	std::cout << "    std::cout << std::format(\"Hello from 'some_command'! These were the arguments: i = {}, f = {}, d = {}, s = {}, b = {}\\n\", i, f, d, s, b);\n";
-	std::cout << "    std::cout << \"Returning if i == 5!\\n\";\n";
-	std::cout << "    return i == 5;\n";
-	std::cout << "}\n";
-	std::cout << "\n";
+	std::cout << R"(
+// Example of usage code:
+// For this example, run Function Finder with these arguments 'client.cpp output.hpp MY_COMMAND init_my_commands my_wrapper':
+// client.cpp
+
+#include <iostream>
+#include <format>
+#include "function_finder/function_finder.hpp"
+#include "output.hpp"
+
+#define MY_COMMAND
+
+int main()
+{
+
+    Function_Map commands;
+    init_my_commands(commands);
+
+    // This is the variable we output all the commands to:
+    Call_Result result;
+
+    std::cout << "Correct usage:\n";
+    std::vector<std::string> args = {"5", "1.2f", "42.0", "Not using the default!", "false"};
+    std::cout << "    ";
+    result = commands["some_command"].function(args, true);
+    std::cout << "    " << to_string(result.value) << '\n';
+    std::cout << '\n';
+
+    std::cout << "Correct usage using defaults:\n";
+    args = {"5", "1.2f", "42.0"};
+    std::cout << "    ";
+    result = commands["some_command"].function(args, true);
+    std::cout << "    " << to_string(result.value) << '\n';
+    std::cout << '\n';
+
+    std::cout << "Correct usage, wrong type:\n";
+    args = {"5", "Woups! A string doesn't go here!", "5"};
+    std::cout << "    ";
+    result = commands["some_command"].function(args, true);
+    std::cout << '\n';
+
+    std::cout << "Correct usage, wrong number of arguments:\n";
+    args = {"5"};
+    std::cout << "    ";
+    result = commands["some_command"].function(args, true);
+    std::cout << '\n';
+
+    // To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\n";
+    std::cout << "To make it easier to integrate with auto-complete and whatever else you'd want, the Function_Map includes much more information about the functions:\n";
+    Function_Decl &command = commands["some_command"];
+    std::cout << " - File: " << command.file << '\n';
+    std::cout << " - Line: " << command.line << '\n';
+    std::cout << " - Name: " << command.name << '\n';
+    std::cout << " - Note (The comment after the search term): " << command.note << '\n';
+    std::cout << " - Return type: " << to_string(command.return_type) << '\n';
+    std::cout << " - Argument information (types, names, and default arguments.):";
+    for(const auto &arg : command.arguments)
+    {
+        if(arg.has_default_value)
+        {
+            std::cout << std::format("    - {} {} = {}\n", value_type_to_cpp_type(arg.type), arg.name, to_string(arg.default_value));
+        }
+        else
+        {
+            std::cout << std::format("    - {} {}\n", value_type_to_cpp_type(arg.type), arg.name);
+        }
+    }
+
+    return 0;
+}
+
+// This is the command we want it to find!
+MY_COMMAND // I can even give it a comment to act as documentation!
+bool some_command(int i, float f, double d, std::string s = "default_values_are_supported", bool b = false)
+{
+    std::cout << std::format("Hello from 'some_command'! These were the arguments: i = {}, f = {}, d = {}, s = {}, b = {}\n", i, f, d, s, b);
+    std::cout << "Returning if i == 5!\n";
+    return i == 5;
+}
+)";
 }
 
 /**************************************

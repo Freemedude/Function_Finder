@@ -175,16 +175,20 @@ void run_custom_command(std::string_view line, Function_Map &commands)
 
 	if (commands.contains(function_name))
 	{
-		Value v;
-		bool success = commands[function_name].function(args, v);
-		if (!success)
+
+		Call_Result verification_result = commands[function_name].function(args, false);
+		if(verification_result.status != Call_Result_Status::SUCCESS)
 		{
+			std::cout << "Didn't run the command, because there were errors!\n";
+			std::cout << verification_result.error_message << '\n';
 			return;
 		}
 
-		if (v.type != Value_Type::VOID)
+		std::cout << "NO ERRORS! We're proceding to actually call!\n";
+		Call_Result result = commands[function_name].function(args, true);
+		if (result.value.type != Value_Type::VOID)
 		{
-			std::cout << to_string(v);
+			std::cout << to_string(result.value);
 			std::cout << "\n";
 		}
 	}
