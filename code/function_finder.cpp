@@ -290,21 +290,46 @@ size_t get_comment(std::string_view source, std::string &out_result)
 			// This is the end of a file without a newline, so find string end instead.
 			end = current.find('\0');
 			assert(end != std::string_view::npos);
+			if(end != std::string_view::npos)
+			{
+				return 0;
+			}
+			
 		}
 
-		out_result = std::string(current.begin(), current.begin() + end);
+		auto comment_end = end;
+
+		// Skip whitespaces BACKWARDS
+		while(std::isspace(current[comment_end - 1]) && comment_end > 0)
+		{
+			comment_end--;
+		}
+		
+		
+		out_result = std::string(current.begin(), current.begin() + comment_end);
 		current = advance(current, end + 1);
 	}
 	else
 	{		
 		// Find the end of the comment.
 		auto end = current.find("*/");
+		assert(end != std::string_view::npos);
+
 		if(end == std::string_view::npos)
 		{
 			std::cout << "Could not find */ in \n" << current << '\n';
+			return 0;
+		}
+
+		auto comment_end = end;
+
+		// Skip whitespaces BACKWARDS
+		while(std::isspace(current[comment_end - 1]) && comment_end > 0)
+		{
+			comment_end--;
 		}
 		
-		out_result = std::string(current.begin(), current.begin() + end);
+		out_result = std::string(current.begin(), current.begin() + comment_end);
 
 		// Sanitize.
 		out_result = std::regex_replace(out_result, std::regex("\n"), "\\n");

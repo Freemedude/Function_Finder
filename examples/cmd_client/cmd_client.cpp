@@ -287,7 +287,7 @@ std::string just_return(std::string str = "hello")
 }
 
 CONSOLE_COMMAND // Squares the second parameter. Ignores the first. Very useful for squaring needs!
-int multiply(int a, double b = 2.1 /*B defaults to 2.1*/)
+int multiply(int a, double b = 2.1 /*    B defaults to 2.1             */)
 {
 	return b * b;
 }

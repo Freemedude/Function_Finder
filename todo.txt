@@ -1,6 +1,5 @@
 TODO:
  * Namespaces.
- * Trim whitespace at the end of comments!
  * Ask Chat-GPT for feedback.
  * Blog.
  * Unit tests.
