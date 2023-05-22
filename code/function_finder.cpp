@@ -587,9 +587,7 @@ void export_pre_declarations(Cpp_File_Writer &w, const std::vector<Function_Decl
 	w << "//     PRE-DECLARATIONS     //";
 	w << "//////////////////////////////";
 
-	w << "// Pre-declarations";
-	w << "// Default values are ommitted because it: 1) wont compile with them defined twice; 2)"
-		"they are handled by the generated wrappers below.";
+	w << "// Pre-declarations of client-functions";
 	w.skip_line();
 	for (const auto &f : functions)
 	{
@@ -615,7 +613,8 @@ void export_pre_declarations(Cpp_File_Writer &w, const std::vector<Function_Decl
 	}
 }
 
-void export_wrapper_functions(Cpp_File_Writer &w, const std::vector<Function_Decl> &functions, const Settings &settings)
+void export_wrapper_functions(Cpp_File_Writer &w, const std::vector<Function_Decl> &functions, 
+	const Settings &settings)
 {
 	// Write a section header to make it easier to navigate the output file.
 	w << "//////////////////////////////";
@@ -623,7 +622,7 @@ void export_wrapper_functions(Cpp_File_Writer &w, const std::vector<Function_Dec
 	w << "//////////////////////////////";
 	w.skip_line();
 
-	// Write the '_wrapper_*' functions
+	// Write the wrapper functions
 	for (auto &function : functions)
 	{
 		export_wrapper_function(w, function, settings);
@@ -635,10 +634,12 @@ void export_wrapper_function(Cpp_File_Writer &w, const Function_Decl &f, const S
 	// Write the function definition
 	w << std::format("// Generated based on function \"{}\" from file \"{}\" L{}",
 		f.name, f.file, f.line);
-	w << std::format("inline bool {}{}(std::vector<std::string> &args, Value &out_result)",
+	w << std::format("inline Call_Result {}{}(std::vector<std::string> &args)",
 		settings.wrapper_function_prefix, f.name);
 	w << "{";
 	w.indent();
+	w << "Call_Result call_result;";
+	w.skip_line();
 
 	// Write the check to confirm that all needed arguments are provided
 	if (f.num_required_args > 0)
@@ -647,11 +648,11 @@ void export_wrapper_function(Cpp_File_Writer &w, const Function_Decl &f, const S
 		w << std::format("if(args.size() < {})", f.num_required_args);
 		w << "{";
 		w.indent();
-
-		w << std::format("printf(\"Not enough arguments for '{}'. Needed {}, but got %zu\\n\", "
-			"args.size());",
+		w << std::format("call_result.error_message = std::format(\"Not enough arguments for '{}'. Needed {}, but got {{}}\", args.size());",
 			f.name, f.num_required_args);
-		w << "return false;";
+		w << "call_result.status = Call_Result_Status::NOT_ENOUGH_ARGUMENTS_ERROR;";
+		w << "call_result.error_helper_value = args.size();";
+		w << "return call_result;";
 
 		w.unindent();
 		w << "}";
@@ -676,7 +677,7 @@ void export_wrapper_function(Cpp_File_Writer &w, const Function_Decl &f, const S
 
 	w.skip_line();
 
-	w << "return true;";
+	w << "return call_result;";
 
 	w.unindent();
 	w << "}";
@@ -730,9 +731,11 @@ void export_argument_handler(Cpp_File_Writer &w, size_t i, const Argument &arg)
 	w << "{";
 	w.indent();
 
-	w << std::format("printf(\"Failed to parse argument {0} '{1}'. Attempted to parse a {2}, but "
-		"got string '%s'\\n\", args[{0}].c_str());", i, arg.name, value_type_to_cpp_type(arg.type));
-	w << "return 0;";
+	w << std::format("call_result.error_message = std::format(\"Failed to parse argument {0} '{1}'. Attempted to parse a {2}, but "
+		"got string '{{}}'\", args[{0}]);", i, arg.name, value_type_to_cpp_type(arg.type));
+	w << "call_result.status = Call_Result_Status::ARGUMENT_PARSING_ERROR;";
+	w << std::format("call_result.error_helper_value = {};", i);
+	w << "return call_result;";
 
 	w.unindent();
 	w << "}";
@@ -748,7 +751,7 @@ void export_argument_handler(Cpp_File_Writer &w, size_t i, const Argument &arg)
 
 void export_consumer_function_value_handler(Cpp_File_Writer &w, const Function_Decl &f)
 {
-	w << std::format("out_result.type = {};", to_string(f.return_type));
+	w << std::format("call_result.value.type = {};", to_string(f.return_type));
 	if (f.return_type == Value_Type::VOID)
 	{
 		w << std::format("{};", function_call_string(f));
@@ -756,12 +759,12 @@ void export_consumer_function_value_handler(Cpp_File_Writer &w, const Function_D
 	else if (f.return_type == Value_Type::STRING)
 	{
 		w << std::format("std::string result = {};", function_call_string(f));
-		w << "strncpy(out_result.data.string_value, result.data(), "
-			"sizeof(out_result.data.string_value));";
+		w << "strncpy(call_result.value.data.string_value, result.data(), "
+			"sizeof(call_result.value.data.string_value));";
 	}
 	else
 	{
-		w << std::format("out_result.data.{}_value = {};", 
+		w << std::format("call_result.value.data.{}_value = {};", 
 			value_type_to_readable_string(f.return_type), function_call_string(f));
 	}
 }
