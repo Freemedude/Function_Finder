@@ -1,7 +1,8 @@
 TODO:
  * Namespaces.
+ * Trim whitespace at the end of comments!
  * Ask Chat-GPT for feedback.
  * Blog.
  * Unit tests.
- * Support for more string types (const char *, char *, std::string_view, const std::string &)
  * More flexible wrapper error handling. If an argument can't be parsed, it shouldn't just be printed. That's useless for applications that don't print to stdout.
+ * Add header file documentation at top. Usage etc.
