@@ -4,5 +4,8 @@ TODO:
  * Ask Chat-GPT for feedback.
  * Blog.
  * Unit tests.
+ * Consider multiple files (Or better separation within the file)
+ * Send to Adrian to see what he thinks.
+ * Run example code before "Releasing"
  * More flexible wrapper error handling. If an argument can't be parsed, it shouldn't just be printed. That's useless for applications that don't print to stdout.
- * Add header file documentation at top. Usage etc.
+ * Add header file documentation at top. Usage, changelog etc.
