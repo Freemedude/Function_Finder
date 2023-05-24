@@ -1,8 +1,22 @@
 TODO:
- * Namespaces.
+ * Simplification pass.
  * Ask Chat-GPT for feedback.
  * Blog.
- * Unit tests.
  * Consider multiple files (Or better separation within the file)
  * Send to Adrian to see what he thinks.
  * Add header file documentation at top. Usage, changelog etc.
+
+
+
+ act on this:
+ The code you provided for the import_functions and import_directory functions looks good overall. Here are a few suggestions to further enhance the code:
+
+    Output Messages: The code includes helpful output messages using std::cout to provide information about the files being processed. Consider using std::cerr for error messages instead of std::cout, as error messages are typically written to the standard error stream.
+
+    Error Handling: When encountering an error, such as failing to import a file or directory, it's a good practice to provide more specific error messages to help users understand what went wrong. Instead of returning a generic false value, you can output an informative error message indicating the specific issue.
+
+    Consistent Parameter Naming: The import_functions function uses inout_functions as the parameter name, while the import_directory function uses inout_functions for the same purpose. Consider using consistent naming for clarity.
+
+    Commenting: While the code is relatively clear, adding comments to explain the purpose and logic of each function and any complex operations could improve readability and make it easier for others to understand the code.
+
+Here's an updated version of your code with the suggested improvements:

@@ -6,51 +6,69 @@ Copyright Daniel 2023
 #include "function_finder_internal.hpp"
 #include <cassert>
 
+/// <summary>
+/// These are the possible exit codes and their meanings.
+/// </summary>
+struct Return_Codes
+{
+	enum Enum
+	{
+		// No errors reported
+		SUCCESS = 0,
+		// Incorrect arguments.
+		ERROR_INSUFFICIENT_ARGUMENTS = 1,
+	};
+};
+
 int main(int arg_count, const char **args)
 {
 	// Parse arguments
-	if (arg_count == 0)
+	if (arg_count < 2)
 	{
-		std::cerr << "[ERROR] Invalid input. see '--help'\n";
+		std::cerr << "[ERROR] Insufficient arguments. See '--help' for usage guide.\n";
+        return Return_Codes::ERROR_INSUFFICIENT_ARGUMENTS;
 	}
 
-	if (arg_count == 2)
-	{
-		std::string_view arg_1 = args[1];
-		if (arg_1 == "--help")
-		{
-			print_help();
-		}
-		if (arg_1 == "--extensions")
-		{
-			print_extensions();
-		}
-		if (arg_1 == "--example")
-		{
-			print_example();
-		}
-		return 0;
-	}
+	std::string_view arg_1 = args[1];
 
-	if (arg_count != 6)
+
+	if (arg_1 == "--help")
+	{
+		print_help();
+	}
+	else if (arg_1 == "--extensions")
+	{
+		print_extensions();
+	}
+	else if (arg_1 == "--example")
+	{
+		print_example();
+	}
+	else if (arg_count != 6)
 	{
 		std::cerr << "[ERROR] Needs a input path, output path, search_term, "
 			"init_function name, and wrapper function prefix as arguments. Terminating.\n";
-		return 1;
+	
+		return Return_Codes::ERROR_INSUFFICIENT_ARGUMENTS;
+	}
+	else
+	{	
+		// Save settings
+		Settings settings;
+		settings.source = arg_1;
+		settings.destination = args[2];
+		settings.search_term = args[3];
+		settings.init_function_name = args[4];
+		settings.wrapper_function_prefix = args[5];
+
+		std::vector<Function_Decl> functions;
+		import_functions(settings, functions);
+
+		export_functions(settings, functions);
+
 	}
 
-	// Save settings
-	Settings settings;
-	settings.source = args[1];
-	settings.destination = args[2];
-	settings.search_term = args[3];
-	settings.init_function_name = args[4];
-	settings.wrapper_function_prefix = args[5];
-
-	std::vector<Function_Decl> functions;
-	import_functions(settings, functions);
-
-	export_functions(settings, functions);
+	return Return_Codes::SUCCESS;
 }
 
 bool import_functions(const Settings &settings, std::vector<Function_Decl> &inout_functions)

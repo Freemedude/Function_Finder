@@ -21,7 +21,7 @@ void user()
     auto arguments = split_arguments("5 \"My argument\"");
 
     // Whether or not to actually call. Useful for confirming that it SHOULD work before actually 
-    // calling
+    //calling
     bool call_client_function = true;
     Call_Result result = commands["my_command"].function(arguments, call_client_function);
     if(result.status = Call_Result_Status::SUCCESS)
