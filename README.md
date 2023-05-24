@@ -10,7 +10,7 @@ a function with eg. 'CONSOLE_COMMAND'; run function_finder as part of your build
 take care of argument parsing, gather debug information and forwarding of documentation!
 
 
-example:
+Minimalist example:
 ```cpp
 // ...
 
@@ -20,22 +20,27 @@ void user()
 
     auto arguments = split_arguments("5 \"My argument\"");
 
-    Value result;
-    bool success = commands["my_command"].function(arguments, &result);
-    if(success)
+    // Whether or not to actually call. Useful for confirming that it SHOULD work before actually 
+    // calling
+    bool call_client_function = true;
+    Call_Result result = commands["my_command"].function(arguments, call_client_function);
+    if(result.status = Call_Result_Status::SUCCESS)
     {
-        // Do something with result
+        // It succeeded! Do something with the result!
     }
     else
     {
-        // 
+        // It failed! Print the message, or inspect the result to see why!
+        std::cout << "Call to 'my_command' failed: " << result.error_message << '\n';
+
+
     }
 }
 
 CONSOLE_COMMAND /* This is the documentation for the command!
 
 It can be multi-line, but you may have to experiment with it to fit how you want to display it! */
-void my_command(int number, std::string argument, bool my_default = 5)
+void my_command(int number, std::string argument, bool my_default = 5 /* Arguments can also have documentation! */)
 {
     // ...
 }

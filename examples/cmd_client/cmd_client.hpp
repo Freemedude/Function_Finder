@@ -25,3 +25,17 @@ inline int print_hello_and_ret_3(int a, int b = 5)
 
 CONSOLE_COMMAND // Hello there
 int my_function(int a);
+
+
+namespace My_Namespace
+{
+void my_function2(int b);
+}
+
+
+
+class GOOD
+{
+public:
+    static void my_function3(int a);
+};

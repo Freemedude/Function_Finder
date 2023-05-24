@@ -224,6 +224,8 @@ bool import_function(std::string_view source, Function_Decl *out_function, const
 		return false;
 	}
 
+	out_function->create_predeclaration = out_function->name.find(":") == std::string::npos;
+
 	final_length += length;
 	current = advance(current, length);
 
@@ -616,6 +618,9 @@ void export_pre_declarations(Cpp_File_Writer &w, const std::vector<Function_Decl
 	w.skip_line();
 	for (const auto &f : functions)
 	{
+		if(!f.create_predeclaration)
+			continue;
+
 		w << std::format("// From \"{}\" L{}", f.file, f.line);
 		w.enable_line_continuation_mode();
 		w << value_type_to_cpp_type(f.return_type) << " " << f.name << "(";
@@ -656,11 +661,14 @@ void export_wrapper_functions(Cpp_File_Writer &w, const std::vector<Function_Dec
 
 void export_wrapper_function(Cpp_File_Writer &w, const Function_Decl &f, const Settings &settings)
 {
+	// Convert colons to underscores. Colons appear from namespaces or static functions.
+	auto function_name = std::regex_replace(f.name, std::regex(":"), "_");
+
 	// Write the function definition
 	w << std::format("// Generated based on function \"{}\" from file \"{}\" L{}",
 		f.name, f.file, f.line);
 	w << std::format("inline Call_Result {}{}(std::vector<std::string> &args, bool call_client_function)",
-		settings.wrapper_function_prefix, f.name);
+		settings.wrapper_function_prefix, function_name);
 	w << "{";
 	w.indent();
 	w << "Call_Result call_result;";
@@ -815,10 +823,13 @@ void export_initialization_function(Cpp_File_Writer &w,
 
 	for (const auto &f : functions)
 	{
+		// Convert colons to underscores. Colons appear from namespaces or static functions.
+		auto function_name = std::regex_replace(f.name, std::regex(":"), "_");
+
 		w << std::format("out_functions[\"{0}\"] = "
-			"Function_Decl(\"{0}\", {4}{0}, {1}, {2}, {3},",
+			"Function_Decl(\"{0}\", {4}{5}, {1}, {2}, {3},",
 			f.name, to_string(f.return_type), f.num_required_args, f.num_optional_args, 
-			settings.wrapper_function_prefix);
+			settings.wrapper_function_prefix, function_name);
 		w.indent();
 		w << std::format("\"{}\", (size_t){},", f.file, f.line);
 		w << "// Arguments";

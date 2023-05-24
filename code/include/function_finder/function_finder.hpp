@@ -1,4 +1,5 @@
 /*
+VERSION
 TODO USAGE GUIDE, VERSION NUMBER ETC
 */
 #pragma once
@@ -181,6 +182,8 @@ struct Function_Decl
 		file(file), line(line), arguments(arguments), note(note)
 	{
 	}
+
+	bool create_predeclaration = false;
 };
 
 /// <summary>

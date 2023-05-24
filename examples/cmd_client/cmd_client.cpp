@@ -6,8 +6,8 @@
 #include <algorithm>
 
 #include "function_finder/function_finder.hpp"
-#include "console_commands_out.hpp"
 #include "cmd_client.hpp"
+#include "console_commands_out.hpp"
 
 // Returns true if a built command was run.
 void run_help_command(std::string_view line, Function_Map &commands);
@@ -296,4 +296,18 @@ int my_function(int a)
 {
 	std::cout << "Pee pee\n";
 	return a;
+}
+
+CONSOLE_COMMAND
+void My_Namespace::my_function2(int b)
+{
+	std::cout << "Hello from namespace Utils\n";
+
+}
+
+
+CONSOLE_COMMAND // Hello there
+void GOOD::my_function3(int a)
+{
+    std::cout << "Hellooooo! " << a << '\n';
 }
